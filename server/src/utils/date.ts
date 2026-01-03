@@ -25,14 +25,21 @@ export function getTodayInTimezone(tz: string = 'UTC'): Dayjs {
  * Parse a date string and normalize to start of day in UTC
  */
 export function parseAndNormalizeDate(dateString: string, tz: string = 'UTC'): Date {
+  // If the date string is in YYYY-MM-DD format, parse it strictly as UTC
+  // This prevents the server's local timezone from shifting the date
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return dayjs.utc(dateString).startOf('day').toDate();
+  }
+
   return dayjs(dateString).tz(tz).startOf('day').utc().toDate();
 }
 
 /**
  * Format date for API response
  */
+// Format date using UTC to avoid server timezone shifts
 export function formatDate(date: Date | Dayjs, format: string = 'YYYY-MM-DD'): string {
-  return dayjs(date).format(format);
+  return dayjs(date).utc().format(format);
 }
 
 /**
@@ -41,7 +48,7 @@ export function formatDate(date: Date | Dayjs, format: string = 'YYYY-MM-DD'): s
 export function getDateRange(days: number, tz: string = 'UTC'): { start: Date; end: Date } {
   const end = getTodayInTimezone(tz);
   const start = end.subtract(days - 1, 'day');
-  
+
   return {
     start: start.utc().toDate(),
     end: end.utc().toDate(),
@@ -53,14 +60,14 @@ export function getDateRange(days: number, tz: string = 'UTC'): { start: Date; e
  */
 export function generateDateRange(start: Date, end: Date): string[] {
   const dates: string[] = [];
-  let current = dayjs(start);
-  const endDate = dayjs(end);
-  
+  let current = dayjs(start).utc(); // Ensure UTC
+  const endDate = dayjs(end).utc(); // Ensure UTC
+
   while (current.isSameOrBefore(endDate, 'day')) {
     dates.push(current.format('YYYY-MM-DD'));
     current = current.add(1, 'day');
   }
-  
+
   return dates;
 }
 
@@ -72,27 +79,28 @@ export function isDateScheduled(
   frequency: string,
   scheduleDays: number[] | null
 ): boolean {
-  const d = dayjs(date);
-  
+  // Use UTC to check day of week/month correctly for stored UTC dates
+  const d = dayjs(date).utc();
+
   switch (frequency) {
     case 'DAILY':
       return true;
-    
+
     case 'WEEKLY':
       // scheduleDays contains days of week (0 = Sunday, 6 = Saturday)
       if (!scheduleDays || scheduleDays.length === 0) return true;
       return scheduleDays.includes(d.day());
-    
+
     case 'MONTHLY':
       // scheduleDays contains days of month (1-31)
       if (!scheduleDays || scheduleDays.length === 0) return true;
       return scheduleDays.includes(d.date());
-    
+
     case 'CUSTOM':
       // For custom, we rely on scheduleDays representing specific patterns
       if (!scheduleDays || scheduleDays.length === 0) return true;
       return scheduleDays.includes(d.day());
-    
+
     default:
       return true;
   }

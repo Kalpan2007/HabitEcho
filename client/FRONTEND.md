@@ -77,6 +77,8 @@ HabitEcho is a **private, personal habit monitoring web application** built with
 │  │  - useActionState for form state                       │   │
 │  │  - useTransition for pending states                    │   │
 │  │  - Toast notifications                                 │   │
+│  │  - Backfilling missed days (date picker)               │   │
+│  │                                                        │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -208,19 +210,27 @@ Components that need interactivity use `'use client'` directive:
 // components/habits/TodayHabitActions.tsx - Client Component
 'use client';
 
-import { useTransition } from 'react';
+import { useTransition, useState } from 'react';
 import { quickLogEntryAction } from '@/actions/entry.actions';
+import { getToday } from '@/lib/utils';
 
 export function TodayHabitActions({ habitId, currentStatus }) {
   const [isPending, startTransition] = useTransition();
+  const [selectedDate, setSelectedDate] = useState(getToday());
   
   const handleQuickLog = (status) => {
     startTransition(async () => {
-      await quickLogEntryAction(habitId, today, status);
+      // Log for the selected date, not just today
+      await quickLogEntryAction(habitId, selectedDate, status);
     });
   };
   
-  return <button onClick={() => handleQuickLog('DONE')}>Done</button>;
+  return (
+    <div>
+      <input type="date" value={selectedDate} onChange={...} />
+      <button onClick={() => handleQuickLog('DONE')}>Done</button>
+    </div>
+  );
 }
 ```
 

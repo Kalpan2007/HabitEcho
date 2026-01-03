@@ -10,7 +10,11 @@ import { WEEKDAYS } from './constants';
  */
 export function formatDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toISOString().split('T')[0];
+  // Use local time to ensure we get the user's actual date, not UTC yesterday
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**
@@ -75,7 +79,7 @@ export function getRelativeTime(date: Date | string): string {
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return `${diffDays} days ago`;
@@ -95,23 +99,23 @@ export function formatScheduleDays(frequency: Frequency, scheduleDays: number[] 
   if (frequency === 'DAILY') {
     return 'Every day';
   }
-  
+
   if (!scheduleDays || scheduleDays.length === 0) {
     return 'Not scheduled';
   }
-  
+
   if (frequency === 'WEEKLY' || frequency === 'CUSTOM') {
     const sortedDays = [...scheduleDays].sort((a, b) => a - b);
     return sortedDays
       .map(day => WEEKDAYS.find(w => w.value === day)?.label || day)
       .join(', ');
   }
-  
+
   if (frequency === 'MONTHLY') {
     const sortedDays = [...scheduleDays].sort((a, b) => a - b);
     return sortedDays.map(day => `${day}${getOrdinalSuffix(day)}`).join(', ');
   }
-  
+
   return 'Custom schedule';
 }
 
@@ -136,24 +140,24 @@ export function isScheduledDay(
 ): boolean {
   const d = typeof date === 'string' ? new Date(date) : date;
   const dateStr = formatDate(d);
-  
+
   // Check date range
   if (dateStr < startDate) return false;
   if (endDate && dateStr > endDate) return false;
-  
+
   // Check frequency
   if (frequency === 'DAILY') return true;
-  
+
   if (!scheduleDays || scheduleDays.length === 0) return false;
-  
+
   if (frequency === 'WEEKLY' || frequency === 'CUSTOM') {
     return scheduleDays.includes(getDayOfWeek(d));
   }
-  
+
   if (frequency === 'MONTHLY') {
     return scheduleDays.includes(getDayOfMonth(d));
   }
-  
+
   return false;
 }
 

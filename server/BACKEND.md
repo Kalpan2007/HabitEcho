@@ -472,6 +472,15 @@ HMACSHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload), secret)
 | `calculateRollingAverages()` | 7/14/30 day averages |
 | `calculateMomentum()` | Trend comparison |
 
+### 5. Date Handling & Timezones
+
+> **Critical:** Dates are stored as strict YYYY-MM-DD in UTC (noon/start-of-day) to prevent timezone shifting.
+
+*   **API inputs:** `YYYY-MM-DD` strings are accepted.
+*   **Parsing:** All `YYYY-MM-DD` inputs are parsed as strict UTC dates (`dateString` + `T00:00:00.000Z`).
+*   **Storage:** Stored in Postgres as `DATE` (or `DateTime` treated as Date).
+*   **Benefits:** This ensures that "Jan 3rd" remains "Jan 3rd" regardless of whether the user is in IST (UTC+5.30) or PST (UTC-8).
+
 ---
 
 ## Security Implementation

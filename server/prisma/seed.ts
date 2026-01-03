@@ -9,7 +9,7 @@ async function main() {
     // 1. Clean up existing data
     await prisma.habitEntry.deleteMany();
     await prisma.habit.deleteMany();
-    await prisma.otpRecord.deleteMany();
+    // await prisma.otpRecord.deleteMany(); // REMOVED
     // We'll keep the user if it exists, or create new if not
 
     const email = 'demo@habitecho.com';
@@ -26,7 +26,7 @@ async function main() {
             fullName: 'Demo User',
             password: hashedPassword,
             occupation: Occupation.ENGINEER,
-            emailVerified: true,  // Important: Verified
+            // emailVerified: true,  // REMOVED
             timezone: 'UTC',
         },
     });

@@ -149,16 +149,35 @@ export async function getPerformanceSummary(userId: string): Promise<Performance
   const activeHabits = habits.filter(h => h.isActive);
 
   // Calculate today's completion
-  const todayDate = today.toDate();
+  // Use strict YYYY-MM-DD string to query DB to avoid time mismatches
+  const todayStr = formatDate(today);
+  // We need to parse this back to a generic Date (UTC midnight) for Prisma if the field is @db.Date
+  // But strictly speaking, our parseAndNormalizeDate handles this best.
+  // Actually, let's filter in memory or ensure we query for the exact date.
+
+  // Alternative: Query by range or use raw string if Prisma supports it, but @db.Date maps to Date object.
+  // Let's rely on finding entries where `entryDate` matches our calculated "Today" string
+
+  // Fetch entries for the user
+  // We can filter effectively in memory for "today" since we already fetched habits with recent entries? 
+  // No, the `include` above only fetched last 30 days.
+
+  // Let's re-fetch today's entries explicitly using the date string logic
+  const todayDateForQuery = new Date(todayStr); // This creates UTC midnight for that string usually (YYYY-MM-DD)
+  // Wait, new Date('2026-01-03') might be local.
+  // Safer to use our date utils
+  const { parseAndNormalizeDate } = await import('../utils/date.js');
+  const normalizedToday = parseAndNormalizeDate(todayStr);
+
   const todayEntries = await prisma.habitEntry.findMany({
     where: {
       habit: { userId, deletedAt: null },
-      entryDate: todayDate,
+      entryDate: normalizedToday,
     },
   });
 
   const todayScheduledHabits = activeHabits.filter(habit =>
-    isDateScheduled(todayDate, habit.frequency, habit.scheduleDays as number[] | null)
+    isDateScheduled(normalizedToday, habit.frequency, habit.scheduleDays as number[] | null)
   );
 
   const todayCompleted = todayEntries.filter(e => e.status === 'DONE').length;
