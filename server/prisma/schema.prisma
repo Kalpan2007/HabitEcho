@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Occupation {
+  STUDENT
+  ENGINEER
+  DOCTOR
+  OTHER
+}
+
+enum Frequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+enum EntryStatus {
+  DONE
+  NOT_DONE
+  PARTIAL
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  fullName      String     @db.VarChar(100)
+  email         String     @unique @db.VarChar(255)
+  password      String     @db.VarChar(255)
+  occupation    Occupation
+  dateOfBirth   DateTime?  @db.Date
+  age           Int?       @db.SmallInt
+  timezone      String     @default("UTC") @db.VarChar(50)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  habits       Habit[]
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Habit {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  name         String    @db.VarChar(100)
+  description  String?   @db.VarChar(500)
+  frequency    Frequency
+  scheduleDays Json?     // Array of days: [0,1,2,3,4,5,6] for weekly, [1,15] for monthly, etc.
+  startDate    DateTime  @db.Date
+  endDate      DateTime? @db.Date
+  isActive     Boolean   @default(true)
+  deletedAt    DateTime? // Soft delete timestamp
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries HabitEntry[]
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@map("habits")
+}
+
+model HabitEntry {
+  id              String      @id @default(uuid()) @db.Uuid
+  habitId         String      @db.Uuid
+  entryDate       DateTime    @db.Date
+  status          EntryStatus
+  percentComplete Int?        @db.SmallInt // 0-100
+  reason          String?     @db.VarChar(300)
+  notes           String?     @db.VarChar(1000)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  // One entry per habit per day
+  @@unique([habitId, entryDate])
+  @@index([habitId])
+  @@index([entryDate])
+  @@index([status])
+  @@map("habit_entries")
+}
