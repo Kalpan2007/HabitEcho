@@ -161,6 +161,33 @@ export function isScheduledDay(
   return false;
 }
 
+/**
+ * Check if a date is scheduled for a habit
+ */
+export function isDateScheduled(
+  date: Date | string,
+  frequency: Frequency,
+  scheduleDays: number[] | null
+): boolean {
+  const d = typeof date === 'string' ? new Date(date) : date;
+
+  switch (frequency) {
+    case 'DAILY':
+      return true;
+    case 'WEEKLY':
+    case 'CUSTOM': {
+      const day = getDayOfWeek(d);
+      return !scheduleDays || scheduleDays.length === 0 || scheduleDays.includes(day);
+    }
+    case 'MONTHLY': {
+      const day = getDayOfMonth(d);
+      return !scheduleDays || scheduleDays.length === 0 || scheduleDays.includes(day);
+    }
+    default:
+      return true;
+  }
+}
+
 // ============================================
 // STATUS UTILITIES
 // ============================================

@@ -10,17 +10,22 @@ import type { Habit, PaginatedResponse } from '@/types';
 // Server Component - fetches habits server-side
 // ============================================
 
+import { HabitSearch } from '@/components/habits/HabitSearch';
+
+// ... other imports ...
+
 interface HabitsPageProps {
-  searchParams: Promise<{ isActive?: string; page?: string }>;
+  searchParams: Promise<{ isActive?: string; page?: string; q?: string }>;
 }
 
-async function getHabits(isActive?: boolean, page = 1): Promise<PaginatedResponse<Habit> | null> {
+async function getHabits(isActive?: boolean, search?: string, page = 1): Promise<PaginatedResponse<Habit> | null> {
   try {
     const cookieStore = await cookies();
     const cookieHeader = cookieStore.toString();
 
     const params = new URLSearchParams();
     if (isActive !== undefined) params.append('isActive', String(isActive));
+    if (search) params.append('search', search); // Backend expects 'search'
     params.append('page', String(page));
     params.append('limit', '20');
 
@@ -40,26 +45,30 @@ async function getHabits(isActive?: boolean, page = 1): Promise<PaginatedRespons
 
 export default async function HabitsPage({ searchParams }: HabitsPageProps) {
   const params = await searchParams;
-  const isActive = params.isActive === 'true' ? true : params.isActive === 'false' ? false : undefined;
+  // Default to Active if not specified. If user genuinely wants "All", they can go to Profile.
+  // Actually, we are adhering to "only show active habits" here.
+  // We can force isActive=true unless explicitly set to false (though we removed the UI for that).
+  const isActive = true;
+  const search = params.q || '';
   const page = parseInt(params.page || '1', 10);
 
-  const habitsResponse = await getHabits(isActive, page);
+  const habitsResponse = await getHabits(isActive, search, page);
   const habits = habitsResponse?.data || [];
   const pagination = habitsResponse?.pagination;
 
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Habits</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Active Habits</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage and track your habits
+            Track and manage your ongoing goals
           </p>
         </div>
         <Link
           href={ROUTES.NEW_HABIT}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm"
         >
           <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -68,38 +77,9 @@ export default async function HabitsPage({ searchParams }: HabitsPageProps) {
         </Link>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2">
-        <Link
-          href={ROUTES.HABITS}
-          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-            isActive === undefined
-              ? 'bg-indigo-100 text-indigo-700'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          All
-        </Link>
-        <Link
-          href={`${ROUTES.HABITS}?isActive=true`}
-          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-            isActive === true
-              ? 'bg-indigo-100 text-indigo-700'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          Active
-        </Link>
-        <Link
-          href={`${ROUTES.HABITS}?isActive=false`}
-          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-            isActive === false
-              ? 'bg-indigo-100 text-indigo-700'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          Inactive
-        </Link>
+      {/* Search Bar */}
+      <div className="w-full">
+        <HabitSearch />
       </div>
 
       {/* Habits list */}

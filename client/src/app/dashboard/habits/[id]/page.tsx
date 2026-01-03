@@ -170,6 +170,8 @@ export default async function HabitDetailPage({ params }: PageProps) {
         habitId={habit.id}
         habitName={habit.name}
         initialEntry={todayEntry}
+        frequency={habit.frequency}
+        scheduleDays={habit.scheduleDays}
       />
 
       {/* Heatmap Section */}

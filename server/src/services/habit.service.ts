@@ -68,15 +68,23 @@ export async function getHabits(
   userId: string,
   options: {
     isActive?: boolean;
+    search?: string;
     page: number;
     limit: number;
   }
 ): Promise<{ habits: HabitPublic[]; total: number }> {
-  const where = {
+  const where: any = {
     userId,
     deletedAt: null, // Exclude soft-deleted habits
     ...(options.isActive !== undefined ? { isActive: options.isActive } : {}),
   };
+
+  if (options.search) {
+    where.name = {
+      contains: options.search,
+      mode: 'insensitive', // Case-insensitive search
+    };
+  }
 
   const [habits, total] = await Promise.all([
     prisma.habit.findMany({

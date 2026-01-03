@@ -18,6 +18,7 @@ export const ROUTES = {
   // Protected routes
   DASHBOARD: '/dashboard',
   HABITS: '/dashboard/habits',
+  PROFILE: '/dashboard/profile',
   NEW_HABIT: '/dashboard/habits/new',
   HABIT_DETAIL: (id: string) => `/dashboard/habits/${id}`,
   PERFORMANCE: '/dashboard/performance',

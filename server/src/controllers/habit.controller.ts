@@ -34,14 +34,21 @@ export async function getHabits(
   try {
     const { userId } = req as AuthenticatedRequest;
     const query = req.query as unknown as {
-      isActive?: boolean;
-      page: number;
-      limit: number;
+      isActive?: string; // Query params are strings often
+      search?: string;
+      page?: string;
+      limit?: string;
     };
-    const { isActive, page, limit } = query;
+
+    // Parse query params
+    const page = parseInt(query.page || '1', 10);
+    const limit = parseInt(query.limit || '20', 10);
+    const isActive = query.isActive === 'true' ? true : query.isActive === 'false' ? false : undefined;
+    const search = query.search;
 
     const { habits, total } = await habitService.getHabits(userId, {
       isActive,
+      search,
       page,
       limit,
     });

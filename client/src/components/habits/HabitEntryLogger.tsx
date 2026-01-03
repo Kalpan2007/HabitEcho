@@ -3,22 +3,26 @@
 import { useTransition, useState } from 'react';
 import { quickLogEntryAction } from '@/actions/entry.actions';
 import { useToast, Card } from '@/components/ui';
-import { getToday, cn } from '@/lib/utils';
-import type { EntryStatus, HabitEntry } from '@/types';
+import { getToday, cn, isDateScheduled } from '@/lib/utils';
+import type { EntryStatus, HabitEntry, Frequency } from '@/types';
 
 interface HabitEntryLoggerProps {
     habitId: string;
     habitName: string;
     initialEntry: HabitEntry | null;
+    frequency: Frequency;
+    scheduleDays: number[] | null;
 }
 
-export function HabitEntryLogger({ habitId, habitName, initialEntry }: HabitEntryLoggerProps) {
+export function HabitEntryLogger({ habitId, habitName, initialEntry, frequency, scheduleDays }: HabitEntryLoggerProps) {
     const [isPending, startTransition] = useTransition();
     const today = getToday();
     const { success, error } = useToast();
 
     const [showPartialModal, setShowPartialModal] = useState(false);
     const [percentComplete, setPercentComplete] = useState(50);
+
+    const isScheduledToday = isDateScheduled(today, frequency, scheduleDays);
 
     const handleLog = (status: EntryStatus, percentage?: number) => {
         // 1. One-time update rule check
@@ -27,13 +31,19 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry }: HabitEntr
             return;
         }
 
-        // 2. Partial Status specific flow
+        // 2. Schedule Check
+        if (!isScheduledToday) {
+            error('Not Scheduled', 'You can only log this habit on scheduled days.');
+            return;
+        }
+
+        // 3. Partial Status specific flow
         if (status === 'PARTIAL' && percentage === undefined) {
             setShowPartialModal(true);
             return;
         }
 
-        // 3. Confirmation Alert
+        // 4. Confirmation Alert
         const message = status === 'DONE'
             ? 'Are you sure you want to mark this as Completed?\n\nThis action cannot be undone.'
             : status === 'PARTIAL'
@@ -65,6 +75,9 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry }: HabitEntr
     const currentStatus = initialEntry?.status;
     const isLocked = !!initialEntry;
 
+    // If not scheduled today and no entry exists, look disabled/informational
+    const isDisabled = !isScheduledToday && !initialEntry;
+
     return (
         <>
             <Card className="border-none shadow-lg shadow-indigo-100 overflow-hidden">
@@ -77,25 +90,30 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry }: HabitEntr
                                 Locked
                             </span>
                         )}
+                        {!isScheduledToday && !isLocked && (
+                            <span className="text-xs font-normal px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full flex items-center gap-1">
+                                Not scheduled for today
+                            </span>
+                        )}
                     </h3>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {/* DONE Button */}
                         <button
                             onClick={() => handleLog('DONE')}
-                            disabled={isPending || isLocked}
+                            disabled={isPending || isLocked || isDisabled}
                             className={cn(
                                 'relative flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-200',
                                 currentStatus === 'DONE'
                                     ? 'bg-green-50 border-green-500 ring-4 ring-green-100 opacity-100'
-                                    : isLocked
+                                    : isLocked || isDisabled
                                         ? 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed'
                                         : 'bg-white border-gray-100 hover:border-green-200 hover:bg-green-50/50 group'
                             )}
                         >
                             <div className={cn(
                                 "w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors",
-                                currentStatus === 'DONE' ? "bg-green-500 text-white" : isLocked ? "bg-gray-200 text-gray-400" : "bg-green-100 text-green-600 group-hover:bg-green-200"
+                                currentStatus === 'DONE' ? "bg-green-500 text-white" : isLocked || isDisabled ? "bg-gray-200 text-gray-400" : "bg-green-100 text-green-600 group-hover:bg-green-200"
                             )}>
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -103,7 +121,7 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry }: HabitEntr
                             </div>
                             <span className={cn(
                                 "font-bold",
-                                currentStatus === 'DONE' ? "text-green-700" : isLocked ? "text-gray-400" : "text-gray-600 group-hover:text-green-700"
+                                currentStatus === 'DONE' ? "text-green-700" : isLocked || isDisabled ? "text-gray-400" : "text-gray-600 group-hover:text-green-700"
                             )}>
                                 Completed
                             </span>
@@ -119,19 +137,19 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry }: HabitEntr
                         {/* PARTIAL Button */}
                         <button
                             onClick={() => handleLog('PARTIAL')}
-                            disabled={isPending || isLocked}
+                            disabled={isPending || isLocked || isDisabled}
                             className={cn(
                                 'relative flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-200',
                                 currentStatus === 'PARTIAL'
                                     ? 'bg-yellow-50 border-yellow-500 ring-4 ring-yellow-100 opacity-100'
-                                    : isLocked
+                                    : isLocked || isDisabled
                                         ? 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed'
                                         : 'bg-white border-gray-100 hover:border-yellow-200 hover:bg-yellow-50/50 group'
                             )}
                         >
                             <div className={cn(
                                 "w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors",
-                                currentStatus === 'PARTIAL' ? "bg-yellow-500 text-white" : isLocked ? "bg-gray-200 text-gray-400" : "bg-yellow-100 text-yellow-600 group-hover:bg-yellow-200"
+                                currentStatus === 'PARTIAL' ? "bg-yellow-500 text-white" : isLocked || isDisabled ? "bg-gray-200 text-gray-400" : "bg-yellow-100 text-yellow-600 group-hover:bg-yellow-200"
                             )}>
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -139,7 +157,7 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry }: HabitEntr
                             </div>
                             <span className={cn(
                                 "font-bold",
-                                currentStatus === 'PARTIAL' ? "text-yellow-700" : isLocked ? "text-gray-400" : "text-gray-600 group-hover:text-yellow-700"
+                                currentStatus === 'PARTIAL' ? "text-yellow-700" : isLocked || isDisabled ? "text-gray-400" : "text-gray-600 group-hover:text-yellow-700"
                             )}>
                                 Partial
                             </span>
@@ -148,19 +166,19 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry }: HabitEntr
                         {/* NOT DONE Button */}
                         <button
                             onClick={() => handleLog('NOT_DONE')}
-                            disabled={isPending || isLocked}
+                            disabled={isPending || isLocked || isDisabled}
                             className={cn(
                                 'relative flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-200',
                                 currentStatus === 'NOT_DONE'
                                     ? 'bg-red-50 border-red-500 ring-4 ring-red-100 opacity-100'
-                                    : isLocked
+                                    : isLocked || isDisabled
                                         ? 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed'
                                         : 'bg-white border-gray-100 hover:border-red-200 hover:bg-red-50/50 group'
                             )}
                         >
                             <div className={cn(
                                 "w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors",
-                                currentStatus === 'NOT_DONE' ? "bg-red-500 text-white" : isLocked ? "bg-gray-200 text-gray-400" : "bg-red-100 text-red-600 group-hover:bg-red-200"
+                                currentStatus === 'NOT_DONE' ? "bg-red-500 text-white" : isLocked || isDisabled ? "bg-gray-200 text-gray-400" : "bg-red-100 text-red-600 group-hover:bg-red-200"
                             )}>
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
@@ -168,7 +186,7 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry }: HabitEntr
                             </div>
                             <span className={cn(
                                 "font-bold",
-                                currentStatus === 'NOT_DONE' ? "text-red-700" : isLocked ? "text-gray-400" : "text-gray-600 group-hover:text-red-700"
+                                currentStatus === 'NOT_DONE' ? "text-red-700" : isLocked || isDisabled ? "text-gray-400" : "text-gray-600 group-hover:text-red-700"
                             )}>
                                 Missed
                             </span>

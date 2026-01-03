@@ -1,7 +1,7 @@
 import { prisma } from '../config/database.js';
 import { parseAndNormalizeDate } from '../utils/date.js';
-import { NotFoundError, ConflictError } from '../utils/errors.js';
-import { verifyHabitOwnership } from './habit.service.js';
+import { NotFoundError, ConflictError, ForbiddenError } from '../utils/errors.js';
+// import { verifyHabitOwnership } from './habit.service.js'; // REMOVED
 import type {
   CreateHabitEntryInput,
   UpdateHabitEntryInput,
@@ -44,10 +44,39 @@ export async function createHabitEntry(
   habitId: string,
   input: CreateHabitEntryInput
 ): Promise<HabitEntryPublic> {
-  // Verify habit ownership
-  await verifyHabitOwnership(userId, habitId);
+  // Verify habit ownership and get schedule details
+  const habit = await prisma.habit.findUnique({
+    where: { id: habitId },
+    select: {
+      userId: true,
+      deletedAt: true,
+      frequency: true,
+      scheduleDays: true,
+    },
+  });
+
+  if (!habit || habit.deletedAt !== null) {
+    throw new NotFoundError('Habit not found');
+  }
+
+  if (habit.userId !== userId) {
+    throw new ForbiddenError('Access denied');
+  }
 
   const entryDate = parseAndNormalizeDate(input.entryDate);
+
+  // Validate that the date is allowed by the schedule
+  const { isDateScheduled } = await import('../utils/date.js');
+  const isScheduled = isDateScheduled(
+    entryDate,
+    habit.frequency,
+    habit.scheduleDays as number[] | null
+  );
+
+  if (!isScheduled) {
+    const { ValidationError } = await import('../utils/errors.js');
+    throw new ValidationError('Cannot log entry for a non-scheduled day');
+  }
 
   // Check if entry already exists
   const existingEntry = await prisma.habitEntry.findUnique({
