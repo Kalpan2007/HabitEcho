@@ -89,6 +89,19 @@ export async function getHabits(
   const [habits, total] = await Promise.all([
     prisma.habit.findMany({
       where,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        frequency: true,
+        scheduleDays: true,
+        startDate: true,
+        endDate: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        // userId and deletedAt omitted
+      },
       orderBy: { createdAt: 'desc' },
       skip: (options.page - 1) * options.limit,
       take: options.limit,
@@ -201,12 +214,24 @@ export async function getHabitsForDate(
     where: {
       userId,
       isActive: true,
-      deletedAt: null, // Exclude soft-deleted habits
+      deletedAt: null,
       startDate: { lte: date },
       OR: [
         { endDate: null },
         { endDate: { gte: date } },
       ],
+    },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      frequency: true,
+      scheduleDays: true,
+      startDate: true,
+      endDate: true,
+      isActive: true,
+      createdAt: true,
+      updatedAt: true,
     },
   });
 

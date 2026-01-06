@@ -137,10 +137,20 @@ export async function getPerformanceSummary(userId: string): Promise<Performance
   // Get user's habits (excluding soft-deleted)
   const habits = await prisma.habit.findMany({
     where: { userId, deletedAt: null },
-    include: {
+    select: {
+      id: true,
+      name: true,
+      isActive: true,
+      frequency: true,
+      scheduleDays: true,
       entries: {
         where: {
           entryDate: { gte: today.subtract(30, 'day').toDate() },
+        },
+        select: {
+          status: true,
+          percentComplete: true,
+          entryDate: true,
         },
       },
     },
@@ -173,6 +183,10 @@ export async function getPerformanceSummary(userId: string): Promise<Performance
     where: {
       habit: { userId, deletedAt: null },
       entryDate: normalizedToday,
+    },
+    select: {
+      status: true,
+      habitId: true,
     },
   });
 
@@ -239,6 +253,10 @@ async function calculateUserRollingAverage(
       habit: { userId, deletedAt: null },
       entryDate: { gte: start, lte: end },
     },
+    select: {
+      status: true,
+      percentComplete: true,
+    },
   });
 
   if (entries.length === 0) return 0;
@@ -264,9 +282,17 @@ async function calculateUserStreaks(
 
   const habits = await prisma.habit.findMany({
     where: { userId, isActive: true, deletedAt: null },
-    include: {
+    select: {
+      id: true,
+      frequency: true,
+      scheduleDays: true,
       entries: {
         where: { entryDate: { gte: start, lte: end } },
+        select: {
+          entryDate: true,
+          status: true,
+          percentComplete: true,
+        },
         orderBy: { entryDate: 'asc' },
       },
     },

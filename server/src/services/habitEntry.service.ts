@@ -1,7 +1,7 @@
 import { prisma } from '../config/database.js';
 import { parseAndNormalizeDate } from '../utils/date.js';
 import { NotFoundError, ConflictError, ForbiddenError } from '../utils/errors.js';
-// import { verifyHabitOwnership } from './habit.service.js'; // REMOVED
+import { verifyHabitOwnership } from './habit.service.js';
 import type {
   CreateHabitEntryInput,
   UpdateHabitEntryInput,
