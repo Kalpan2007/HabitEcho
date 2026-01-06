@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { API_BASE_URL, ROUTES } from '@/lib/constants';
 import { getToday } from '@/lib/utils';
-import type { FormState, CreateHabitInput, UpdateHabitInput, Frequency } from '@/types';
+import type { FormState, CreateHabitInput, UpdateHabitInput, Frequency, Habit } from '@/types';
 
 // ============================================
 // HELPER: Make authenticated API request
@@ -280,3 +280,12 @@ export async function archiveHabitAction(
     message: 'Habit archived successfully',
   };
 }
+
+// ============================================
+// GET HABIT BY ID
+// ============================================
+
+export async function getHabitAction(habitId: string) {
+  return apiRequest<{ habit: Habit }>(`/habits/${habitId}`);
+}
+

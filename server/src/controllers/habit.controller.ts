@@ -33,18 +33,9 @@ export async function getHabits(
 ): Promise<void> {
   try {
     const { userId } = req as AuthenticatedRequest;
-    const query = req.query as unknown as {
-      isActive?: string; // Query params are strings often
-      search?: string;
-      page?: string;
-      limit?: string;
-    };
 
-    // Parse query params
-    const page = parseInt(query.page || '1', 10);
-    const limit = parseInt(query.limit || '20', 10);
-    const isActive = query.isActive === 'true' ? true : query.isActive === 'false' ? false : undefined;
-    const search = query.search;
+    // Use validated data from req.query (transformed by Zod)
+    const { page, limit, isActive, search } = req.query as any;
 
     const { habits, total } = await habitService.getHabits(userId, {
       isActive,

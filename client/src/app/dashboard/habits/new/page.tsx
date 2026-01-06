@@ -2,7 +2,8 @@
 
 import { useActionState, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { createHabitAction } from '@/actions/habit.actions';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { createHabitAction, getHabitAction } from '@/actions/habit.actions';
 import { Button, Input, Select, Textarea, Card, useToast } from '@/components/ui';
 import { ROUTES, FREQUENCY_OPTIONS, WEEKDAYS } from '@/lib/constants';
 import { getToday, cn } from '@/lib/utils';
@@ -19,10 +20,45 @@ const initialState: FormState = {
 
 export default function NewHabitPage() {
   const [state, formAction, isPending] = useActionState(createHabitAction, initialState);
+  const searchParams = useSearchParams();
+  const templateId = searchParams.get('templateId');
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
+
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [frequency, setFrequency] = useState<Frequency>('DAILY');
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const { success, error } = useToast();
+
+  const { success, error, info } = useToast();
   const prevStateRef = useRef(state);
+
+  // Load template if templateId is present
+  useEffect(() => {
+    if (!templateId) return;
+
+    const loadTemplate = async () => {
+      setIsLoadingTemplate(true);
+      try {
+        const result = await getHabitAction(templateId);
+        if (result.success && result.data?.habit) {
+          const habit = result.data.habit;
+          setName(habit.name);
+          setDescription(habit.description || '');
+          setFrequency(habit.frequency);
+          setSelectedDays(habit.scheduleDays || []);
+          info('Template Loaded', `Details from "${habit.name}" have been pre-filled.`);
+        } else {
+          error('Failed to load template', result.message);
+        }
+      } catch (err) {
+        error('Error loading template', 'An unexpected error occurred.');
+      } finally {
+        setIsLoadingTemplate(false);
+      }
+    };
+
+    loadTemplate();
+  }, [templateId, error, info]);
 
   // Show toast on state change
   useEffect(() => {
@@ -60,13 +96,17 @@ export default function NewHabitPage() {
           </svg>
           Back to Habits
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Create New Habit</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {templateId ? 'Restart Habit' : 'Create New Habit'}
+        </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Define a new habit to track your progress
+          {templateId
+            ? 'Adjust the details below to start this habit again'
+            : 'Define a new habit to track your progress'}
         </p>
       </div>
 
-      <Card>
+      <Card className={cn(isLoadingTemplate && 'opacity-50 pointer-events-none transition-opacity')}>
         <form action={formAction} className="space-y-6">
           {/* Habit name */}
           <Input
@@ -74,6 +114,8 @@ export default function NewHabitPage() {
             name="name"
             type="text"
             placeholder="e.g., Morning Meditation"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             required
             error={state.errors?.name?.[0]}
           />
@@ -84,6 +126,8 @@ export default function NewHabitPage() {
             name="description"
             placeholder="What does this habit involve?"
             rows={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
             error={state.errors?.description?.[0]}
           />
 
@@ -189,11 +233,20 @@ export default function NewHabitPage() {
               Cancel
             </Link>
             <Button type="submit" isLoading={isPending}>
-              Create Habit
+              {templateId ? 'Restart Habit' : 'Create Habit'}
             </Button>
           </div>
         </form>
       </Card>
+      {isLoadingTemplate && (
+        <div className="mt-4 flex items-center justify-center text-sm text-gray-500 animate-pulse">
+          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Fetching habit details...
+        </div>
+      )}
     </div>
   );
 }
