@@ -1,5 +1,6 @@
 import express, { Express } from 'express';
 import helmet from 'helmet';
+import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { config } from './config/index.js';
 import routes from './routes/index.js';
@@ -8,6 +9,7 @@ import {
   notFoundHandler,
   requestLogger,
   generalRateLimiter,
+  requestTimeout,
 } from './middlewares/index.js';
 
 /**
@@ -15,6 +17,13 @@ import {
  */
 export function createApp(): Express {
   const app = express();
+
+  // ============================================
+  // GLOBAL MIDDLEWARE
+  // ============================================
+
+  // Request timeout (30s)
+  app.use(requestTimeout(30));
 
   // ============================================
   // SECURITY MIDDLEWARE
@@ -81,30 +90,14 @@ export function createApp(): Express {
   // CORS CONFIGURATION
   // ============================================
 
-  // Simple CORS for same-origin requests
-  // For cross-origin requests, configure specific origins
-  app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    
-    // In development, allow localhost origins
-    if (config.isDevelopment && origin) {
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.header(
-        'Access-Control-Allow-Headers',
-        'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-      );
-
-      // Handle preflight requests
-      if (req.method === 'OPTIONS') {
-        res.sendStatus(204);
-        return;
-      }
-    }
-
-    next();
-  });
+  app.use(
+    cors({
+      origin: config.isDevelopment ? true : config.cors.origin,
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+    })
+  );
 
   // ============================================
   // TRUST PROXY (for rate limiting behind reverse proxy)
