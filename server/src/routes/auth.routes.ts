@@ -2,10 +2,7 @@ import { Router } from 'express';
 import { authController } from '../controllers/index.js';
 import { authenticate, validate } from '../middlewares/index.js';
 import { authRateLimiter } from '../middlewares/index.js';
-import {
-  signupSchema,
-  loginSchema,
-} from '../validations/index.js';
+import { signupSchema, loginSchema } from '../validations/index.js';
 
 const router = Router();
 
@@ -68,6 +65,12 @@ router.post(
   validate(loginSchema),
   authController.login
 );
+
+/**
+ * POST /auth/refresh
+ * Refresh access token using refresh token in cookie
+ */
+router.post('/refresh', authController.refresh);
 
 /**
  * POST /auth/logout

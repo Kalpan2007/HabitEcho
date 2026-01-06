@@ -75,6 +75,12 @@ export interface LoginInput {
   password: string;
 }
 
+export interface AuthResponse {
+  user: UserPublic;
+  accessToken: string;
+  refreshToken: string;
+}
+
 export interface VerifyOtpInput {
   email: string;
   code: string;

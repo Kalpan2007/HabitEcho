@@ -20,8 +20,14 @@ export async function signup(
   try {
     const result = await authService.signup(req.body);
 
-    // Set JWT in HttpOnly cookie
-    res.cookie(config.cookie.name, result.token, config.cookie.options);
+    // Set Access JWT in HttpOnly cookie
+    res.cookie('habitecho_access', result.accessToken, config.cookie.options);
+
+    // Set Refresh JWT in HttpOnly cookie
+    res.cookie('habitecho_refresh', result.refreshToken, {
+      ...config.cookie.options,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
 
     sendCreated(res, { user: result.user }, 'Registration successful');
   } catch (error) {
@@ -41,10 +47,48 @@ export async function login(
   try {
     const result = await authService.login(req.body);
 
-    // Set JWT in HttpOnly cookie
-    res.cookie(config.cookie.name, result.token, config.cookie.options);
+    // Set Access JWT in HttpOnly cookie
+    res.cookie('habitecho_access', result.accessToken, config.cookie.options);
+
+    // Set Refresh JWT in HttpOnly cookie
+    res.cookie('habitecho_refresh', result.refreshToken, {
+      ...config.cookie.options,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
 
     sendSuccess(res, { user: result.user }, 'Login successful');
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * POST /auth/refresh
+ * Refresh access token using refresh token
+ */
+export async function refresh(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const refreshToken = req.cookies.habitecho_refresh;
+
+    if (!refreshToken) {
+      res.status(401).json({ success: false, message: 'Refresh token missing' });
+      return;
+    }
+
+    const { accessToken, refreshToken: newRefreshToken } = await authService.refreshAuthToken(refreshToken);
+
+    // Update tokens in cookies
+    res.cookie('habitecho_access', accessToken, config.cookie.options);
+    res.cookie('habitecho_refresh', newRefreshToken, {
+      ...config.cookie.options,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    sendSuccess(res, null, 'Token refreshed successfully');
   } catch (error) {
     next(error);
   }
@@ -55,18 +99,27 @@ export async function login(
  * Logout user and clear cookie
  */
 export async function logout(
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
-    // Clear the auth cookie
-    res.clearCookie(config.cookie.name, {
+    const refreshToken = req.cookies.habitecho_refresh;
+
+    if (refreshToken) {
+      await authService.logout(refreshToken);
+    }
+
+    // Clear all auth cookies
+    const clearOptions = {
       httpOnly: true,
       secure: config.isProduction,
-      sameSite: config.isProduction ? 'strict' : 'lax',
+      sameSite: config.isProduction ? ('strict' as const) : ('lax' as const),
       path: '/',
-    });
+    };
+
+    res.clearCookie('habitecho_access', clearOptions);
+    res.clearCookie('habitecho_refresh', clearOptions);
 
     sendSuccess(res, null, 'Logout successful');
   } catch (error) {

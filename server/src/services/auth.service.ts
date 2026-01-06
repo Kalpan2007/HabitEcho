@@ -1,15 +1,20 @@
 import { prisma } from '../config/database.js';
 import { hashPassword, comparePassword } from '../utils/crypto.js';
-import { generateToken } from '../utils/jwt.js';
+import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
 import {
   ConflictError,
   NotFoundError,
   UnauthorizedError,
 } from '../utils/errors.js';
-import type { SignupInput, LoginInput, UserPublic } from '../types/index.js';
+import type {
+  SignupInput,
+  LoginInput,
+  UserPublic,
+  AuthResponse
+} from '../types/index.js';
 
 /**
- * Format user for public response (exclude sensitive data)
+ * Format user for public response
  */
 function formatUserPublic(user: {
   id: string;
@@ -34,12 +39,34 @@ function formatUserPublic(user: {
 }
 
 /**
+ * Helper to generate tokens and store refresh token
+ */
+async function generateAuthResponse(userId: string, user: any): Promise<AuthResponse> {
+  const accessToken = generateAccessToken(userId);
+  const refreshTokenString = generateRefreshToken(userId);
+
+  // Store refresh token in DB
+  await (prisma as any).refreshToken.create({
+    data: {
+      token: refreshTokenString,
+      userId,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+    },
+  });
+
+  return {
+    user: formatUserPublic(user),
+    accessToken,
+    refreshToken: refreshTokenString,
+  };
+}
+
+/**
  * Register a new user
  */
-export async function signup(input: SignupInput): Promise<{ user: UserPublic; token: string }> {
+export async function signup(input: SignupInput): Promise<AuthResponse> {
   const { fullName, email, password, occupation, dateOfBirth, age, timezone } = input;
 
-  // Check if user already exists
   const existingUser = await prisma.user.findUnique({
     where: { email },
   });
@@ -48,10 +75,8 @@ export async function signup(input: SignupInput): Promise<{ user: UserPublic; to
     throw new ConflictError('Email already registered');
   }
 
-  // Hash password
   const hashedPassword = await hashPassword(password);
 
-  // Create user
   const user = await prisma.user.create({
     data: {
       fullName,
@@ -64,24 +89,15 @@ export async function signup(input: SignupInput): Promise<{ user: UserPublic; to
     },
   });
 
-  // Generate JWT immediately
-  const token = generateToken(user.id);
-
-  return {
-    user: formatUserPublic(user),
-    token,
-  };
+  return generateAuthResponse(user.id, user);
 }
 
 /**
  * Login user
  */
-export async function login(
-  input: LoginInput
-): Promise<{ user: UserPublic; token: string }> {
+export async function login(input: LoginInput): Promise<AuthResponse> {
   const { email, password } = input;
 
-  // Find user
   const user = await prisma.user.findUnique({
     where: { email },
   });
@@ -90,20 +106,61 @@ export async function login(
     throw new UnauthorizedError('Invalid email or password');
   }
 
-  // Verify password
   const isValidPassword = await comparePassword(password, user.password);
 
   if (!isValidPassword) {
     throw new UnauthorizedError('Invalid email or password');
   }
 
-  // Generate JWT
-  const token = generateToken(user.id);
+  return generateAuthResponse(user.id, user);
+}
+
+/**
+ * Refresh authentication token
+ */
+export async function refreshAuthToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  const storedToken = await prisma.refreshToken.findUnique({
+    where: { token: refreshToken },
+    include: { user: true },
+  });
+
+  if (!storedToken || storedToken.revoked || storedToken.expiresAt < new Date()) {
+    throw new UnauthorizedError('Invalid or expired refresh token');
+  }
+
+  // Revoke old token
+  await prisma.refreshToken.update({
+    where: { id: storedToken.id },
+    data: { revoked: true },
+  });
+
+  // Generate new tokens
+  const newAccessToken = generateAccessToken(storedToken.userId);
+  const newRefreshToken = generateRefreshToken(storedToken.userId);
+
+  // Store new refresh token
+  await (prisma as any).refreshToken.create({
+    data: {
+      token: newRefreshToken,
+      userId: storedToken.userId,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    },
+  });
 
   return {
-    user: formatUserPublic(user),
-    token,
+    accessToken: newAccessToken,
+    refreshToken: newRefreshToken,
   };
+}
+
+/**
+ * Logout (revoke refresh token)
+ */
+export async function logout(refreshToken: string): Promise<void> {
+  await prisma.refreshToken.updateMany({
+    where: { token: refreshToken },
+    data: { revoked: true },
+  });
 }
 
 /**
@@ -118,7 +175,7 @@ export async function getUserById(userId: string): Promise<UserPublic> {
     throw new NotFoundError('User not found');
   }
 
-  return formatUserPublic(user);
+  return formatUserPublic(user as any); // Cast as any to bypass temporary lint while prisma regenerates
 }
 
 /**

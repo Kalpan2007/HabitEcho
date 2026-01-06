@@ -21,6 +21,7 @@ enum Occupation {
   OTHER
 }
 
+
 enum Frequency {
   DAILY
   WEEKLY
@@ -51,11 +52,28 @@ model User {
   updatedAt     DateTime   @updatedAt
 
   // Relations
-  habits       Habit[]
+  habits        Habit[]
+  refreshTokens RefreshToken[]
 
   @@index([email])
   @@index([createdAt])
   @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @unique
+  userId    String   @db.Uuid
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
 }
 
 model Habit {

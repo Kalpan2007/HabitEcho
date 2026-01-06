@@ -3,13 +3,24 @@ import { config } from '../config/index.js';
 import type { JwtPayload } from '../types/index.js';
 
 /**
- * Generate JWT token with userId
+ * Generate Access JWT token
  */
-export function generateToken(userId: string): string {
+export function generateAccessToken(userId: string): string {
   const payload = { userId };
-  
+
   return jwt.sign(payload, config.jwt.secret, {
-    expiresIn: '7d',
+    expiresIn: config.jwt.expiresIn as any,
+  });
+}
+
+/**
+ * Generate Refresh JWT token
+ */
+export function generateRefreshToken(userId: string): string {
+  const payload = { userId };
+
+  return jwt.sign(payload, config.jwt.secret, {
+    expiresIn: '30d', // Refresh token lives longer
   });
 }
 
@@ -21,7 +32,7 @@ export function verifyToken(token: string): JwtPayload {
 }
 
 /**
- * Decode token without verification (for debugging)
+ * Decode token without verification
  */
 export function decodeToken(token: string): JwtPayload | null {
   return jwt.decode(token) as JwtPayload | null;
