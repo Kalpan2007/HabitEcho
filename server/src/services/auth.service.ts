@@ -10,27 +10,19 @@ import type {
   SignupInput,
   LoginInput,
   UserPublic,
-  AuthResponse
+  AuthResponse,
+  Occupation
 } from '../types/index.js';
 
 /**
  * Format user for public response
  */
-function formatUserPublic(user: {
-  id: string;
-  fullName: string;
-  email: string;
-  occupation: string;
-  dateOfBirth: Date | null;
-  age: number | null;
-  timezone: string;
-  createdAt: Date;
-}): UserPublic {
+function formatUserPublic(user: any): UserPublic {
   return {
     id: user.id,
     fullName: user.fullName,
     email: user.email,
-    occupation: user.occupation as UserPublic['occupation'],
+    occupation: user.occupation as Occupation,
     dateOfBirth: user.dateOfBirth,
     age: user.age,
     timezone: user.timezone,
@@ -67,7 +59,7 @@ async function generateAuthResponse(userId: string, user: any): Promise<AuthResp
 export async function signup(input: SignupInput): Promise<AuthResponse> {
   const { fullName, email, password, occupation, dateOfBirth, age, timezone } = input;
 
-  const existingUser = await prisma.user.findUnique({
+  const existingUser = await (prisma as any).user.findUnique({
     where: { email },
   });
 
@@ -77,7 +69,7 @@ export async function signup(input: SignupInput): Promise<AuthResponse> {
 
   const hashedPassword = await hashPassword(password);
 
-  const user = await prisma.user.create({
+  const user = await (prisma as any).user.create({
     data: {
       fullName,
       email,
@@ -98,7 +90,7 @@ export async function signup(input: SignupInput): Promise<AuthResponse> {
 export async function login(input: LoginInput): Promise<AuthResponse> {
   const { email, password } = input;
 
-  const user = await prisma.user.findUnique({
+  const user = await (prisma as any).user.findUnique({
     where: { email },
   });
 
@@ -119,7 +111,7 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
  * Refresh authentication token
  */
 export async function refreshAuthToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
-  const storedToken = await prisma.refreshToken.findUnique({
+  const storedToken = await (prisma as any).refreshToken.findUnique({
     where: { token: refreshToken },
     include: { user: true },
   });
@@ -129,7 +121,7 @@ export async function refreshAuthToken(refreshToken: string): Promise<{ accessTo
   }
 
   // Revoke old token
-  await prisma.refreshToken.update({
+  await (prisma as any).refreshToken.update({
     where: { id: storedToken.id },
     data: { revoked: true },
   });
@@ -157,7 +149,7 @@ export async function refreshAuthToken(refreshToken: string): Promise<{ accessTo
  * Logout (revoke refresh token)
  */
 export async function logout(refreshToken: string): Promise<void> {
-  await prisma.refreshToken.updateMany({
+  await (prisma as any).refreshToken.updateMany({
     where: { token: refreshToken },
     data: { revoked: true },
   });
@@ -167,7 +159,7 @@ export async function logout(refreshToken: string): Promise<void> {
  * Get user by ID
  */
 export async function getUserById(userId: string): Promise<UserPublic> {
-  const user = await prisma.user.findUnique({
+  const user = await (prisma as any).user.findUnique({
     where: { id: userId },
   });
 
@@ -182,7 +174,7 @@ export async function getUserById(userId: string): Promise<UserPublic> {
  * Get user's timezone
  */
 export async function getUserTimezone(userId: string): Promise<string> {
-  const user = await prisma.user.findUnique({
+  const user = await (prisma as any).user.findUnique({
     where: { id: userId },
     select: { timezone: true },
   });
