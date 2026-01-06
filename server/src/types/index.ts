@@ -194,6 +194,7 @@ export interface HabitPerformance {
     last30Days: number;
   };
   heatmapData: HeatmapEntry[];
+  missingDates: string[]; // List of historical scheduled dates with no entry
   momentum: {
     current: number;
     previous: number;

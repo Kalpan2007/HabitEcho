@@ -5,9 +5,11 @@ import { API_BASE_URL, ROUTES } from '@/lib/constants';
 import { Card, StatusBadge, FrequencyBadge, Button } from '@/components/ui';
 
 import { HabitEntryLogger } from '@/components/habits/HabitEntryLogger';
+import { ArchiveHabitButton } from '@/components/habits/ArchiveHabitButton';
+import { PendingEntriesList } from '@/components/habits/PendingEntriesList';
 import { ActivityChart } from '@/components/charts/ActivityChart';
 import { TrendChart } from '@/components/charts/TrendChart';
-import { getMomentumDisplay, getToday } from '@/lib/utils';
+import { getMomentumDisplay, getToday, formatDisplayDate, formatScheduleDays, isToday } from '@/lib/utils';
 import type { HabitPerformance, ApiResponse, Habit, HabitEntry } from '@/types';
 
 // ============================================
@@ -129,38 +131,44 @@ export default async function HabitDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <div className="flex items-center justify-center p-6 bg-gray-50 rounded-2xl border border-gray-100 min-w-[160px]">
-            <div className="text-center">
-              <div className="relative inline-flex items-center justify-center">
-                <svg className="w-24 h-24 transform -rotate-90">
-                  <circle
-                    className="text-gray-200"
-                    strokeWidth="8"
-                    stroke="currentColor"
-                    fill="transparent"
-                    r="40"
-                    cx="48"
-                    cy="48"
-                  />
-                  <circle
-                    className={`${completionColor} transition-all duration-1000 ease-out`}
-                    strokeWidth="8"
-                    strokeDasharray={251.2}
-                    strokeDashoffset={251.2 - (251.2 * performance.completionRate) / 100}
-                    strokeLinecap="round"
-                    stroke="currentColor"
-                    fill="transparent"
-                    r="40"
-                    cx="48"
-                    cy="48"
-                  />
-                </svg>
-                <span className={`absolute text-2xl font-bold ${completionColor}`}>
-                  {performance.completionRate}%
-                </span>
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center justify-center p-6 bg-gray-50 rounded-2xl border border-gray-100 min-w-[160px]">
+              <div className="text-center">
+                <div className="relative inline-flex items-center justify-center">
+                  <svg className="w-24 h-24 transform -rotate-90">
+                    <circle
+                      className="text-gray-200"
+                      strokeWidth="8"
+                      stroke="currentColor"
+                      fill="transparent"
+                      r="40"
+                      cx="48"
+                      cy="48"
+                    />
+                    <circle
+                      className={`${completionColor} transition-all duration-1000 ease-out`}
+                      strokeWidth="8"
+                      strokeDasharray={251.2}
+                      strokeDashoffset={251.2 - (251.2 * performance.completionRate) / 100}
+                      strokeLinecap="round"
+                      stroke="currentColor"
+                      fill="transparent"
+                      r="40"
+                      cx="48"
+                      cy="48"
+                    />
+                  </svg>
+                  <span className={`absolute text-2xl font-bold ${completionColor}`}>
+                    {performance.completionRate}%
+                  </span>
+                </div>
+                <p className="mt-2 text-sm font-medium text-gray-500">Completion Rate</p>
               </div>
-              <p className="mt-2 text-sm font-medium text-gray-500">Completion Rate</p>
             </div>
+
+            {habit.isActive && (
+              <ArchiveHabitButton habitId={habit.id} habitName={habit.name} />
+            )}
           </div>
         </div>
       </div>

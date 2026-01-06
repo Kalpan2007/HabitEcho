@@ -146,6 +146,7 @@ export interface HabitPerformance {
   missedEntries: number;
   rollingAverages: RollingAverages;
   heatmapData: HeatmapDataPoint[];
+  missingDates: string[]; // Added: List of historical scheduled dates with no entry
   momentum: Momentum;
 }
 

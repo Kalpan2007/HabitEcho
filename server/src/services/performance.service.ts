@@ -445,6 +445,12 @@ export async function getHabitPerformance(
   // Calculate streaks
   const streaks = calculateStreaks(entries, scheduledDates);
 
+  // Identify missing dates (Scheduled but no entry)
+  const entryDateStrings = new Set(entries.map(e => dayjs(e.entryDate).tz(timezone).format('YYYY-MM-DD')));
+  const missingDates = scheduledDates
+    .map(d => dayjs(d).tz(timezone).format('YYYY-MM-DD'))
+    .filter(dateStr => !entryDateStrings.has(dateStr));
+
   // Calculate rolling averages
   const [last7Days, last14Days, last30Days] = await Promise.all([
     calculateRollingAverage(habitId, 7, timezone),
@@ -502,6 +508,7 @@ export async function getHabitPerformance(
       last30Days,
     },
     heatmapData,
+    missingDates, // Add calculated missing dates
     momentum,
   };
 }

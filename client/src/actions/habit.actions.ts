@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { API_BASE_URL, ROUTES } from '@/lib/constants';
+import { getToday } from '@/lib/utils';
 import type { FormState, CreateHabitInput, UpdateHabitInput, Frequency } from '@/types';
 
 // ============================================
@@ -17,7 +18,7 @@ async function apiRequest<T>(
   try {
     const cookieStore = await cookies();
     const cookieHeader = cookieStore.toString();
-    
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       credentials: 'include',
@@ -27,9 +28,9 @@ async function apiRequest<T>(
         ...options.headers,
       },
     });
-    
+
     const data = await response.json();
-    
+
     if (!response.ok) {
       return {
         success: false,
@@ -37,7 +38,7 @@ async function apiRequest<T>(
         error: data.error?.code,
       };
     }
-    
+
     return {
       success: true,
       data: data.data,
@@ -64,12 +65,12 @@ export async function createHabitAction(
     frequency: formData.get('frequency') as Frequency,
     startDate: formData.get('startDate') as string,
   };
-  
+
   // Add optional fields
   const description = formData.get('description') as string;
   const endDate = formData.get('endDate') as string;
   const scheduleDaysRaw = formData.get('scheduleDays') as string;
-  
+
   if (description) input.description = description;
   if (endDate) input.endDate = endDate;
   if (scheduleDaysRaw) {
@@ -79,27 +80,27 @@ export async function createHabitAction(
       // Invalid JSON, ignore
     }
   }
-  
+
   // Validate required fields
   const errors: Record<string, string[]> = {};
-  
+
   if (!input.name || input.name.length < 1) {
     errors.name = ['Habit name is required'];
   }
-  
+
   if (!input.frequency) {
     errors.frequency = ['Please select a frequency'];
   }
-  
+
   if (!input.startDate) {
     errors.startDate = ['Start date is required'];
   }
-  
+
   // Validate scheduleDays for non-daily frequencies
   if (input.frequency !== 'DAILY' && (!input.scheduleDays || input.scheduleDays.length === 0)) {
     errors.scheduleDays = ['Please select at least one day'];
   }
-  
+
   if (Object.keys(errors).length > 0) {
     return {
       success: false,
@@ -107,19 +108,19 @@ export async function createHabitAction(
       errors,
     };
   }
-  
+
   const result = await apiRequest('/habits', {
     method: 'POST',
     body: JSON.stringify(input),
   });
-  
+
   if (!result.success) {
     return {
       success: false,
       message: result.message,
     };
   }
-  
+
   // Revalidate habits page and redirect
   revalidatePath(ROUTES.HABITS);
   redirect(ROUTES.HABITS);
@@ -135,7 +136,7 @@ export async function updateHabitAction(
   formData: FormData
 ): Promise<FormState> {
   const input: UpdateHabitInput = {};
-  
+
   // Only include fields that are provided
   const name = formData.get('name') as string;
   const description = formData.get('description') as string;
@@ -144,7 +145,7 @@ export async function updateHabitAction(
   const endDate = formData.get('endDate') as string;
   const isActive = formData.get('isActive');
   const scheduleDaysRaw = formData.get('scheduleDays') as string;
-  
+
   if (name) input.name = name;
   if (description !== null) input.description = description || undefined;
   if (frequency) input.frequency = frequency;
@@ -158,14 +159,14 @@ export async function updateHabitAction(
       // Invalid JSON, ignore
     }
   }
-  
+
   // Validate
   const errors: Record<string, string[]> = {};
-  
+
   if (input.name !== undefined && input.name.length < 1) {
     errors.name = ['Habit name is required'];
   }
-  
+
   if (Object.keys(errors).length > 0) {
     return {
       success: false,
@@ -173,23 +174,23 @@ export async function updateHabitAction(
       errors,
     };
   }
-  
+
   const result = await apiRequest(`/habits/${habitId}`, {
     method: 'PUT',
     body: JSON.stringify(input),
   });
-  
+
   if (!result.success) {
     return {
       success: false,
       message: result.message,
     };
   }
-  
+
   // Revalidate pages
   revalidatePath(ROUTES.HABITS);
   revalidatePath(ROUTES.HABIT_DETAIL(habitId));
-  
+
   return {
     success: true,
     message: 'Habit updated successfully',
@@ -204,14 +205,14 @@ export async function deleteHabitAction(habitId: string): Promise<FormState> {
   const result = await apiRequest(`/habits/${habitId}`, {
     method: 'DELETE',
   });
-  
+
   if (!result.success) {
     return {
       success: false,
       message: result.message,
     };
   }
-  
+
   // Revalidate habits page and redirect
   revalidatePath(ROUTES.HABITS);
   revalidatePath(ROUTES.DASHBOARD);
@@ -230,20 +231,52 @@ export async function toggleHabitActiveAction(
     method: 'PUT',
     body: JSON.stringify({ isActive }),
   });
-  
+
   if (!result.success) {
     return {
       success: false,
       message: result.message,
     };
   }
-  
+
   // Revalidate pages
   revalidatePath(ROUTES.HABITS);
   revalidatePath(ROUTES.DASHBOARD);
-  
+
   return {
     success: true,
     message: isActive ? 'Habit activated' : 'Habit deactivated',
+  };
+}
+// ============================================
+// ARCHIVE HABIT ACTION
+// ============================================
+
+export async function archiveHabitAction(
+  habitId: string
+): Promise<FormState> {
+  const result = await apiRequest(`/habits/${habitId}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      isActive: false,
+      endDate: getToday()
+    }),
+  });
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  revalidatePath(ROUTES.HABIT_DETAIL(habitId));
+  revalidatePath(ROUTES.DASHBOARD);
+  revalidatePath(ROUTES.HABITS);
+  revalidatePath(ROUTES.PROFILE);
+
+  return {
+    success: true,
+    message: 'Habit archived successfully',
   };
 }
