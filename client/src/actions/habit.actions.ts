@@ -69,10 +69,14 @@ export async function createHabitAction(
   // Add optional fields
   const description = formData.get('description') as string;
   const endDate = formData.get('endDate') as string;
+  const reminderTime = formData.get('reminderTime') as string;
+  const timezone = (formData.get('timezone') as string) || Intl.DateTimeFormat().resolvedOptions().timeZone;
   const scheduleDaysRaw = formData.get('scheduleDays') as string;
 
   if (description) input.description = description;
   if (endDate) input.endDate = endDate;
+  if (reminderTime) input.reminderTime = reminderTime;
+  input.timezone = timezone;
   if (scheduleDaysRaw) {
     try {
       input.scheduleDays = JSON.parse(scheduleDaysRaw);
@@ -152,6 +156,12 @@ export async function updateHabitAction(
   if (startDate) input.startDate = startDate;
   if (endDate) input.endDate = endDate || null;
   if (isActive !== null) input.isActive = isActive === 'true';
+  if (formData.get('reminderTime') !== null) {
+    input.reminderTime = formData.get('reminderTime') as string || null;
+  }
+  if (formData.get('timezone')) {
+    input.timezone = formData.get('timezone') as string;
+  }
   if (scheduleDaysRaw) {
     try {
       input.scheduleDays = JSON.parse(scheduleDaysRaw);

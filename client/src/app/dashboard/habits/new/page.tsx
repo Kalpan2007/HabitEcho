@@ -215,13 +215,33 @@ export default function NewHabitPage() {
             error={state.errors?.startDate?.[0]}
           />
 
-          {/* End date (optional) */}
-          <Input
-            label="End Date (optional)"
-            name="endDate"
-            type="date"
-            hint="Leave empty for an ongoing habit"
-            error={state.errors?.endDate?.[0]}
+          {/* Reminder Time */}
+          <div className="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100 shadow-sm transition-all hover:shadow-md">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-bold text-gray-900 mb-1">
+                  Email Reminders
+                </label>
+                <p className="text-xs text-indigo-600/70 leading-relaxed max-w-xs">
+                  We'll send you a nudge at your preferred time to keep your streak alive.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Input
+                  name="reminderTime"
+                  type="time"
+                  className="w-40 h-11 text-lg font-medium tracking-tight bg-white border-indigo-200 focus:ring-indigo-500 rounded-xl shadow-sm"
+                  error={state.errors?.reminderTime?.[0]}
+                />
+              </div>
+            </div>
+          </div>
+
+          <input
+            type="hidden"
+            name="timezone"
+            value={Intl.DateTimeFormat().resolvedOptions().timeZone}
           />
 
           {/* Actions */}
