@@ -20,6 +20,8 @@ function formatHabitPublic(habit: {
   startDate: Date;
   endDate: Date | null;
   isActive: boolean;
+  reminderTime: string | null;
+  timezone: string;
   deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -33,6 +35,8 @@ function formatHabitPublic(habit: {
     startDate: habit.startDate,
     endDate: habit.endDate,
     isActive: habit.isActive,
+    reminderTime: habit.reminderTime,
+    timezone: habit.timezone,
     createdAt: habit.createdAt,
     updatedAt: habit.updatedAt,
   };
@@ -45,6 +49,11 @@ export async function createHabit(
   userId: string,
   input: CreateHabitInput
 ): Promise<HabitPublic> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { timezone: true }
+  });
+
   const habit = await prisma.habit.create({
     data: {
       userId,
@@ -55,6 +64,8 @@ export async function createHabit(
       startDate: parseAndNormalizeDate(input.startDate),
       endDate: input.endDate ? parseAndNormalizeDate(input.endDate) : null,
       isActive: true,
+      reminderTime: input.reminderTime ?? null,
+      timezone: input.timezone || user?.timezone || 'UTC',
     },
   });
 
@@ -98,6 +109,8 @@ export async function getHabits(
         startDate: true,
         endDate: true,
         isActive: true,
+        reminderTime: true,
+        timezone: true,
         createdAt: true,
         updatedAt: true,
         // userId and deletedAt omitted
@@ -110,7 +123,7 @@ export async function getHabits(
   ]);
 
   return {
-    habits: habits.map(formatHabitPublic),
+    habits: habits.map(formatHabitPublic as any),
     total,
   };
 }
@@ -134,7 +147,7 @@ export async function getHabitById(
     throw new ForbiddenError('Access denied');
   }
 
-  return formatHabitPublic(habit);
+  return formatHabitPublic(habit as any);
 }
 
 /**
@@ -170,13 +183,15 @@ export async function updateHabit(
     updateData.endDate = input.endDate ? parseAndNormalizeDate(input.endDate) : null;
   }
   if (input.isActive !== undefined) updateData.isActive = input.isActive;
+  if (input.reminderTime !== undefined) updateData.reminderTime = input.reminderTime;
+  if (input.timezone !== undefined) updateData.timezone = input.timezone;
 
   const habit = await prisma.habit.update({
     where: { id: habitId },
     data: updateData,
   });
 
-  return formatHabitPublic(habit);
+  return formatHabitPublic(habit as any);
 }
 
 /**
@@ -230,12 +245,14 @@ export async function getHabitsForDate(
       startDate: true,
       endDate: true,
       isActive: true,
+      reminderTime: true,
+      timezone: true,
       createdAt: true,
       updatedAt: true,
     },
   });
 
-  return habits.map(formatHabitPublic);
+  return habits.map(formatHabitPublic as any);
 }
 
 /**

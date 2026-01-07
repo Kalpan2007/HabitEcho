@@ -2,6 +2,7 @@ import { app } from './app.js';
 import { config } from './config/index.js';
 import { connectDatabase, disconnectDatabase } from './config/database.js';
 import { logger } from './utils/logger.js';
+import { initCronJobs } from './services/index.js';
 
 /**
  * Start the server
@@ -10,6 +11,9 @@ async function startServer(): Promise<void> {
   try {
     // Connect to database
     await connectDatabase();
+
+    // Initialize cron jobs
+    initCronJobs();
 
     // Start HTTP server
     const server = app.listen(config.port, () => {

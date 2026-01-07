@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { habitController, habitEntryController } from '../controllers/index.js';
-import { authenticate, validate, validateMultiple } from '../middlewares/index.js';
+import { habitController, habitLogController } from '../controllers/index.js';
+import { authenticate, validate, validateMultiple, isEmailVerified } from '../middlewares/index.js';
 import {
   createHabitSchema,
   updateHabitSchema,
   habitIdParamSchema,
   getHabitsQuerySchema,
-  createHabitEntrySchema,
-  updateHabitEntrySchema,
+  createHabitLogSchema,
+  updateHabitLogSchema,
   getHabitHistoryQuerySchema,
 } from '../validations/index.js';
 
@@ -19,48 +19,17 @@ router.use(authenticate);
 /**
  * POST /habits
  * Create a new habit
- * 
- * Request Body:
- * {
- *   "name": "Morning Meditation",
- *   "description": "10 minutes of mindfulness meditation",
- *   "frequency": "DAILY",
- *   "scheduleDays": null,
- *   "startDate": "2026-01-01",
- *   "endDate": null
- * }
- * 
- * Response:
- * {
- *   "success": true,
- *   "message": "Habit created successfully",
- *   "data": {
- *     "habit": { ... }
- *   }
- * }
  */
 router.post(
   '/',
+  isEmailVerified,
   validate(createHabitSchema),
   habitController.createHabit
 );
 
 /**
  * GET /habits
- * Get all habits for the authenticated user
- * 
- * Query Parameters:
- * - isActive: boolean (optional) - Filter by active status
- * - page: number (default: 1)
- * - limit: number (default: 20, max: 100)
- * 
- * Response:
- * {
- *   "success": true,
- *   "message": "Habits retrieved successfully",
- *   "data": [...],
- *   "pagination": { page, limit, total, totalPages }
- * }
+ * Get all habits
  */
 router.get(
   '/',
@@ -70,7 +39,6 @@ router.get(
 
 /**
  * GET /habits/:id
- * Get a specific habit by ID
  */
 router.get(
   '/:id',
@@ -80,16 +48,6 @@ router.get(
 
 /**
  * PUT /habits/:id
- * Update a habit
- * 
- * Request Body (all fields optional):
- * {
- *   "name": "Updated Habit Name",
- *   "description": "Updated description",
- *   "frequency": "WEEKLY",
- *   "scheduleDays": [1, 3, 5],
- *   "isActive": false
- * }
  */
 router.put(
   '/:id',
@@ -102,7 +60,6 @@ router.put(
 
 /**
  * DELETE /habits/:id
- * Delete a habit and all its entries
  */
 router.delete(
   '/:id',
@@ -111,79 +68,68 @@ router.delete(
 );
 
 /**
+ * POST /habits/:id/log
+ * (New preferred path)
+ */
+router.post(
+  '/:id/log',
+  validateMultiple({
+    params: habitIdParamSchema,
+    body: createHabitLogSchema,
+  }),
+  habitLogController.createHabitLog
+);
+
+/**
  * POST /habits/:id/entry
- * Create a habit entry for a specific date
- * 
- * Request Body:
- * {
- *   "entryDate": "2026-01-01",
- *   "status": "DONE",
- *   "percentComplete": 100,
- *   "reason": null,
- *   "notes": "Great session today!"
- * }
+ * (Legacy path for compatibility)
  */
 router.post(
   '/:id/entry',
   validateMultiple({
     params: habitIdParamSchema,
-    body: createHabitEntrySchema,
+    body: createHabitLogSchema, // Use same schema but map 'entryDate' to 'date' if needed. 
+    // Actually, createHabitLogSchema expects 'date'.
   }),
-  habitEntryController.createHabitEntry
+  habitLogController.createHabitLog
+);
+
+/**
+ * PUT /habits/:id/log/:date
+ */
+router.put(
+  '/:id/log/:date',
+  validateMultiple({
+    params: habitIdParamSchema,
+    body: updateHabitLogSchema,
+  }),
+  habitLogController.updateHabitLog
 );
 
 /**
  * PUT /habits/:id/entry/:entryDate
- * Update a habit entry
- * 
- * URL Parameters:
- * - id: Habit UUID
- * - entryDate: Date in YYYY-MM-DD format
- * 
- * Request Body (all fields optional):
- * {
- *   "status": "PARTIAL",
- *   "percentComplete": 75,
- *   "reason": "Got interrupted",
- *   "notes": "Will complete tomorrow"
- * }
+ * (Legacy path)
  */
 router.put(
-  '/:id/entry/:entryDate',
+  '/:id/entry/:date',
   validateMultiple({
     params: habitIdParamSchema,
-    body: updateHabitEntrySchema,
+    body: updateHabitLogSchema,
   }),
-  habitEntryController.updateHabitEntry
+  habitLogController.updateHabitLog
 );
 
 /**
- * DELETE /habits/:id/entry/:entryDate
- * Delete a habit entry
+ * DELETE /habits/:id/log/:date
  */
 router.delete(
-  '/:id/entry/:entryDate',
+  '/:id/log/:date',
   validate(habitIdParamSchema, 'params'),
-  habitEntryController.deleteHabitEntry
+  habitLogController.deleteHabitLog
 );
 
 /**
  * GET /habits/:id/history
- * Get entry history for a habit
- * 
- * Query Parameters:
- * - startDate: string (YYYY-MM-DD, optional)
- * - endDate: string (YYYY-MM-DD, optional)
- * - page: number (default: 1)
- * - limit: number (default: 30, max: 365)
- * 
- * Response:
- * {
- *   "success": true,
- *   "message": "Habit history retrieved successfully",
- *   "data": [...entries],
- *   "pagination": { page, limit, total, totalPages }
- * }
  */
 router.get(
   '/:id/history',
@@ -191,7 +137,7 @@ router.get(
     params: habitIdParamSchema,
     query: getHabitHistoryQuerySchema,
   }),
-  habitEntryController.getHabitHistory
+  habitLogController.getHabitHistory
 );
 
 export default router;

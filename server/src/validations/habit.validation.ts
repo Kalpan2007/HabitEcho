@@ -10,29 +10,40 @@ export const createHabitSchema = z.object({
     .min(1, 'Habit name is required')
     .max(100, 'Habit name must be at most 100 characters')
     .trim(),
-  
+
   description: z
     .string()
     .max(500, 'Description must be at most 500 characters')
     .trim()
     .optional(),
-  
+
   frequency: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM'], {
     errorMap: () => ({ message: 'Frequency must be one of: DAILY, WEEKLY, MONTHLY, CUSTOM' }),
   }),
-  
+
   scheduleDays: z
     .array(z.number().int().min(0).max(31))
     .max(31, 'Too many schedule days')
     .optional(),
-  
+
   startDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format'),
-  
+
   endDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be in YYYY-MM-DD format')
+    .optional(),
+
+  reminderTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Reminder time must be in HH:mm format (24h)')
+    .optional(),
+
+  timezone: z
+    .string()
+    .max(50, 'Timezone string too long')
+    .trim()
     .optional(),
 }).refine(
   (data) => {
@@ -69,36 +80,48 @@ export const updateHabitSchema = z.object({
     .max(100, 'Habit name must be at most 100 characters')
     .trim()
     .optional(),
-  
+
   description: z
     .string()
     .max(500, 'Description must be at most 500 characters')
     .trim()
     .nullable()
     .optional(),
-  
+
   frequency: z
     .enum(['DAILY', 'WEEKLY', 'MONTHLY', 'CUSTOM'])
     .optional(),
-  
+
   scheduleDays: z
     .array(z.number().int().min(0).max(31))
     .max(31, 'Too many schedule days')
     .nullable()
     .optional(),
-  
+
   startDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format')
     .optional(),
-  
+
   endDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be in YYYY-MM-DD format')
     .nullable()
     .optional(),
-  
+
   isActive: z.boolean().optional(),
+
+  reminderTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Reminder time must be in HH:mm format (24h)')
+    .nullable()
+    .optional(),
+
+  timezone: z
+    .string()
+    .max(50, 'Timezone string too long')
+    .trim()
+    .optional(),
 }).refine(
   (data) => {
     if (data.endDate && data.startDate) {
@@ -118,13 +141,13 @@ export const getHabitsQuerySchema = z.object({
     .string()
     .transform((val) => val === 'true')
     .optional(),
-  
+
   page: z
     .string()
     .transform(Number)
     .pipe(z.number().int().positive())
     .default('1'),
-  
+
   limit: z
     .string()
     .transform(Number)
