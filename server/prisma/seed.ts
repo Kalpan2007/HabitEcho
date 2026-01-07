@@ -7,7 +7,7 @@ async function main() {
     console.log('🌱 Starting database seed...');
 
     // 1. Clean up existing data
-    await prisma.habitEntry.deleteMany();
+    await (prisma as any).habitLog.deleteMany();
     await prisma.habit.deleteMany();
     // await prisma.otpRecord.deleteMany(); // REMOVED
     // We'll keep the user if it exists, or create new if not
@@ -18,7 +18,7 @@ async function main() {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash('Password123!', salt);
 
-    const user = await prisma.user.upsert({
+    const user = await (prisma as any).user.upsert({
         where: { email },
         update: {},
         create: {
@@ -26,7 +26,7 @@ async function main() {
             fullName: 'Demo User',
             password: hashedPassword,
             occupation: Occupation.ENGINEER,
-            // emailVerified: true,  // REMOVED
+            emailVerified: true,
             timezone: 'UTC',
         },
     });
@@ -116,16 +116,18 @@ async function main() {
                     // DONE
                     entries.push({
                         habitId: habit.id,
-                        entryDate: date,
+                        date: date,
                         status: EntryStatus.DONE,
+                        completed: true,
                         percentComplete: 100,
                     });
                 } else if (rand < 0.75) {
                     // PARTIAL
                     entries.push({
                         habitId: habit.id,
-                        entryDate: date,
+                        date: date,
                         status: EntryStatus.PARTIAL,
+                        completed: false,
                         percentComplete: 50,
                         notes: 'Ran out of time',
                     });
@@ -133,8 +135,9 @@ async function main() {
                     // NOT DONE explicitly logged
                     entries.push({
                         habitId: habit.id,
-                        entryDate: date,
+                        date: date,
                         status: EntryStatus.NOT_DONE,
+                        completed: false,
                         percentComplete: 0,
                         reason: 'Too tired',
                     });
@@ -144,7 +147,7 @@ async function main() {
         }
 
         if (entries.length > 0) {
-            await prisma.habitEntry.createMany({
+            await (prisma as any).habitLog.createMany({
                 data: entries,
             });
             console.log(`   - Added ${entries.length} entries`);
