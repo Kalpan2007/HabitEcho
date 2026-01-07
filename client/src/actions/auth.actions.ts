@@ -125,7 +125,49 @@ export async function signupAction(
     };
   }
 
-  // Handle auto-login by forwarding Set-Cookie from backend
+  return {
+    success: true,
+    message: 'Verification code sent to your email. Please check your inbox.',
+    data: { email: input.email },
+  };
+}
+
+/**
+ * VERIFY OTP ACTION
+ */
+export async function verifyOtpAction(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const email = formData.get('email') as string;
+  const otp = formData.get('otp') as string;
+
+  if (!otp || otp.length !== 6) {
+    return {
+      success: false,
+      message: 'Please enter a valid 6-digit code',
+    };
+  }
+
+  const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, otp }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    return {
+      success: false,
+      message: data.message || 'Invalid or expired code',
+    };
+  }
+
+  // Handle login by forwarding cookies
   const setCookie = response.headers.get('set-cookie');
   if (setCookie) {
     const cookieStore = await cookies();
@@ -139,12 +181,39 @@ export async function signupAction(
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
     });
   }
 
-  // Redirect to dashboard
   redirect(ROUTES.DASHBOARD);
+}
+
+/**
+ * RESEND OTP ACTION
+ */
+export async function resendOtpAction(email: string): Promise<FormState> {
+  const response = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    return {
+      success: false,
+      message: data.message || 'Failed to resend code',
+    };
+  }
+
+  return {
+    success: true,
+    message: 'New verification code sent',
+  };
 }
 
 
