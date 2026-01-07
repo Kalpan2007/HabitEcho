@@ -3,6 +3,7 @@
 import { useTransition } from 'react';
 import { logoutAction } from '@/actions/auth.actions';
 import { useToast, Logo } from '@/components/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@/types';
 
 // ============================================
@@ -16,9 +17,14 @@ interface HeaderProps {
 export function Header({ user }: HeaderProps) {
   const [isPending, startTransition] = useTransition();
   const { info } = useToast();
+  const queryClient = useQueryClient();
 
   const handleLogout = () => {
     info('Logging out...', 'You will be redirected to the login page');
+
+    // Clear the query cache to prevent data from being shown if another user logs in
+    queryClient.clear();
+
     startTransition(() => {
       logoutAction();
     });

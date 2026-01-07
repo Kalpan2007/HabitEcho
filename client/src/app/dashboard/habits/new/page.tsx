@@ -1,83 +1,76 @@
 'use client';
 
-import { useActionState, useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { createHabitAction, getHabitAction } from '@/actions/habit.actions';
+import { useCreateHabit, useHabitDetail } from '@/hooks/useHabits';
 import { Button, Input, Select, Textarea, Card, useToast } from '@/components/ui';
 import { ROUTES, FREQUENCY_OPTIONS, WEEKDAYS } from '@/lib/constants';
 import { getToday, cn } from '@/lib/utils';
-import type { FormState, Frequency } from '@/types';
+import type { Frequency } from '@/types';
 
 // ============================================
 // NEW HABIT FORM - Client Component
 // ============================================
 
-const initialState: FormState = {
-  success: false,
-  message: '',
-};
-
 export default function NewHabitPage() {
-  const [state, formAction, isPending] = useActionState(createHabitAction, initialState);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const templateId = searchParams.get('templateId');
-  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
+
+  const { data: templateData, isLoading: isLoadingTemplate } = useHabitDetail(templateId || '');
+  const { mutate: createHabit, isPending } = useCreateHabit();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [frequency, setFrequency] = useState<Frequency>('DAILY');
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [reminderTime, setReminderTime] = useState('');
 
   const { success, error, info } = useToast();
-  const prevStateRef = useRef(state);
 
   // Load template if templateId is present
   useEffect(() => {
-    if (!templateId) return;
-
-    const loadTemplate = async () => {
-      setIsLoadingTemplate(true);
-      try {
-        const result = await getHabitAction(templateId);
-        if (result.success && result.data?.habit) {
-          const habit = result.data.habit;
-          setName(habit.name);
-          setDescription(habit.description || '');
-          setFrequency(habit.frequency);
-          setSelectedDays(habit.scheduleDays || []);
-          info('Template Loaded', `Details from "${habit.name}" have been pre-filled.`);
-        } else {
-          error('Failed to load template', result.message);
-        }
-      } catch (err) {
-        error('Error loading template', 'An unexpected error occurred.');
-      } finally {
-        setIsLoadingTemplate(false);
-      }
-    };
-
-    loadTemplate();
-  }, [templateId, error, info]);
-
-  // Show toast on state change
-  useEffect(() => {
-    if (state === prevStateRef.current) return;
-    prevStateRef.current = state;
-
-    if (state.message) {
-      if (state.success) {
-        success('Habit created!', state.message);
-      } else {
-        error('Failed to create habit', state.message);
-      }
+    if (templateId && templateData?.data?.habit) {
+      const habit = templateData.data.habit;
+      setName(habit.name);
+      setDescription(habit.description || '');
+      setFrequency(habit.frequency);
+      setSelectedDays(habit.scheduleDays || []);
+      setReminderTime(habit.reminderTime || '');
+      info('Template Loaded', `Details from "${habit.name}" have been pre-filled.`);
     }
-  }, [state, success, error]);
+  }, [templateId, templateData, info]);
 
   const toggleDay = (day: number) => {
     setSelectedDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    const input = {
+      name: formData.get('name') as string,
+      description: formData.get('description') as string,
+      frequency: formData.get('frequency') as Frequency,
+      scheduleDays: selectedDays.length > 0 ? selectedDays : undefined,
+      startDate: formData.get('startDate') as string,
+      reminderTime: (formData.get('reminderTime') as string) || undefined,
+      timezone: (formData.get('timezone') as string) || undefined,
+    };
+
+    createHabit(input, {
+      onSuccess: () => {
+        success('Habit created!', 'Your new habit has been set up.');
+        router.push(ROUTES.HABITS);
+      },
+      onError: (err: any) => {
+        error('Failed to create habit', err.message);
+      }
+    });
   };
 
   const showDaySelector = frequency === 'WEEKLY' || frequency === 'CUSTOM';
@@ -107,7 +100,7 @@ export default function NewHabitPage() {
       </div>
 
       <Card className={cn(isLoadingTemplate && 'opacity-50 pointer-events-none transition-opacity')}>
-        <form action={formAction} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Habit name */}
           <Input
             label="Habit Name"
@@ -117,7 +110,6 @@ export default function NewHabitPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            error={state.errors?.name?.[0]}
           />
 
           {/* Description */}
@@ -128,7 +120,6 @@ export default function NewHabitPage() {
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            error={state.errors?.description?.[0]}
           />
 
           {/* Frequency */}
@@ -142,7 +133,6 @@ export default function NewHabitPage() {
               setSelectedDays([]);
             }}
             required
-            error={state.errors?.frequency?.[0]}
           />
 
           {/* Weekly/Custom day selector */}
@@ -168,10 +158,6 @@ export default function NewHabitPage() {
                   </button>
                 ))}
               </div>
-              <input type="hidden" name="scheduleDays" value={JSON.stringify(selectedDays)} />
-              {state.errors?.scheduleDays && (
-                <p className="mt-1 text-sm text-red-600">{state.errors.scheduleDays[0]}</p>
-              )}
             </div>
           )}
 
@@ -198,10 +184,6 @@ export default function NewHabitPage() {
                   </button>
                 ))}
               </div>
-              <input type="hidden" name="scheduleDays" value={JSON.stringify(selectedDays)} />
-              {state.errors?.scheduleDays && (
-                <p className="mt-1 text-sm text-red-600">{state.errors.scheduleDays[0]}</p>
-              )}
             </div>
           )}
 
@@ -212,7 +194,6 @@ export default function NewHabitPage() {
             type="date"
             defaultValue={getToday()}
             required
-            error={state.errors?.startDate?.[0]}
           />
 
           {/* Reminder Time */}
@@ -232,7 +213,8 @@ export default function NewHabitPage() {
                   name="reminderTime"
                   type="time"
                   className="w-40 h-11 text-lg font-medium tracking-tight bg-white border-indigo-200 focus:ring-indigo-500 rounded-xl shadow-sm"
-                  error={state.errors?.reminderTime?.[0]}
+                  value={reminderTime}
+                  onChange={(e) => setReminderTime(e.target.value)}
                 />
               </div>
             </div>

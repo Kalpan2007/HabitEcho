@@ -1,7 +1,7 @@
 'use client';
 
-import { useTransition, useState } from 'react';
-import { quickLogEntryAction } from '@/actions/entry.actions';
+import { useState } from 'react';
+import { useLogEntry } from '@/hooks/useEntries';
 import { useToast, Card } from '@/components/ui';
 import { getToday, cn, isDateScheduled } from '@/lib/utils';
 import type { EntryStatus, HabitEntry, Frequency } from '@/types';
@@ -15,7 +15,7 @@ interface HabitEntryLoggerProps {
 }
 
 export function HabitEntryLogger({ habitId, habitName, initialEntry, frequency, scheduleDays }: HabitEntryLoggerProps) {
-    const [isPending, startTransition] = useTransition();
+    const { mutate: logEntry, isPending } = useLogEntry(habitId);
     const today = getToday();
     const { success, error } = useToast();
 
@@ -54,20 +54,18 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry, frequency, 
 
         if (!confirmed) return;
 
-        startTransition(async () => {
-            // Pass percentage only if defined
-            const result = await quickLogEntryAction(habitId, today, status, percentage);
-            if (result.success) {
+        logEntry({
+            status,
+            entryDate: today,
+            percentComplete: percentage
+        }, {
+            onSuccess: () => {
                 const text = status === 'DONE' ? 'Completed!' : status === 'PARTIAL' ? `Marked as ${percentage}% complete` : 'Marked as missed';
                 success('Status Updated', text);
                 setShowPartialModal(false);
-                // We rely on router refresh or parent optimistically updating,
-                // but since this is a client component receiving props, we might need
-                // to handle local state if we want immediate feedback without full refresh
-                // or just rely on the fact that action revalidates path.
-                // Assuming revalidatePath works, the component will re-render with new initialEntry.
-            } else {
-                error('Failed to update', result.message);
+            },
+            onError: (err: any) => {
+                error('Failed to update', err.message);
             }
         });
     };

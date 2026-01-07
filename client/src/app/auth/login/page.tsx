@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { loginAction } from '@/actions/auth.actions';
 import { Button, Input, useToast } from '@/components/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import { ROUTES } from '@/lib/constants';
 import type { FormState } from '@/types';
 
@@ -21,6 +22,8 @@ export default function LoginPage() {
   const { success, error } = useToast();
   const prevStateRef = useRef(state);
 
+  const queryClient = useQueryClient();
+
   // Show toast on state change
   useEffect(() => {
     if (state === prevStateRef.current) return;
@@ -29,11 +32,13 @@ export default function LoginPage() {
     if (state.message) {
       if (state.success) {
         success('Welcome back!', state.message);
+        // Refresh protected data after login
+        queryClient.invalidateQueries();
       } else {
         error('Login failed', state.message);
       }
     }
-  }, [state, success, error]);
+  }, [state, success, error, queryClient]);
 
   return (
     <div>

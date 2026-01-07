@@ -1,13 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { habitsApi } from '@/lib/api';
 import { ROUTES } from '@/lib/constants';
 import { Card, FrequencyBadge, Badge, Button, SkeletonCard } from '@/components/ui';
 import { formatDisplayDate } from '@/lib/utils';
 import type { Habit } from '@/types';
+import { useHabits } from '@/hooks/useHabits';
 
 interface HabitHistoryClientProps {
     initialHabits: Habit[];
@@ -20,20 +19,12 @@ export default function HabitHistoryClient({
 }: HabitHistoryClientProps) {
     const [activeTab, setActiveTab] = useState(initialTab);
 
-    const habitsQuery = useQuery({
-        queryKey: ['habits', { limit: 100 }],
-        queryFn: () => habitsApi.getAll({ limit: 100 }),
-        initialData: {
-            success: true,
-            message: 'Initial data',
-            data: initialHabits,
-            pagination: { total: initialHabits.length, page: 1, limit: 100, totalPages: 1 }
-        } as any,
-        staleTime: 30000,
+    const habitsQuery = useHabits({
+        limit: 100,
+        initialData: initialHabits
     });
 
     const habits = habitsQuery.data?.data || [];
-    const isLoading = habitsQuery.isFetching && habits.length === 0;
 
     // Filter habits based on tab
     const filteredHabits = habits.filter((h: Habit) => {

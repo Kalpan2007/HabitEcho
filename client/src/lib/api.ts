@@ -19,7 +19,7 @@ import type {
 // BASE FETCH HELPER
 // ============================================
 
-interface FetchOptions extends RequestInit {
+export interface ApiOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
 }
 
@@ -31,7 +31,7 @@ interface FetchOptions extends RequestInit {
  */
 async function apiFetch<T>(
   endpoint: string,
-  options: FetchOptions = {}
+  options: ApiOptions = {}
 ): Promise<ApiResponse<T>> {
   const { params, ...fetchOptions } = options;
 
@@ -51,9 +51,9 @@ async function apiFetch<T>(
   }
 
   const response = await fetch(url, {
-    ...fetchOptions,
     credentials: 'include', // Always send HttpOnly cookies
     cache: 'no-store', // Disable caching for user-specific data
+    ...fetchOptions,
     headers: {
       'Content-Type': 'application/json',
       ...fetchOptions.headers,
@@ -92,8 +92,9 @@ export const authApi = {
   /**
    * Register a new user
    */
-  async signup(input: SignupInput): Promise<ApiResponse<{ user: User; otpSent: boolean }>> {
+  async signup(input: SignupInput, options?: ApiOptions): Promise<ApiResponse<{ user: User; otpSent: boolean }>> {
     return apiFetch('/auth/signup', {
+      ...options,
       method: 'POST',
       body: JSON.stringify(input),
     });
@@ -102,8 +103,9 @@ export const authApi = {
   /**
    * Login user (sets HttpOnly cookie)
    */
-  async login(input: LoginInput): Promise<ApiResponse<{ user: User }>> {
+  async login(input: LoginInput, options?: ApiOptions): Promise<ApiResponse<{ user: User }>> {
     return apiFetch('/auth/login', {
+      ...options,
       method: 'POST',
       body: JSON.stringify(input),
     });
@@ -112,8 +114,9 @@ export const authApi = {
   /**
    * Logout user (clears HttpOnly cookie)
    */
-  async logout(): Promise<ApiResponse<null>> {
+  async logout(options?: ApiOptions): Promise<ApiResponse<null>> {
     return apiFetch('/auth/logout', {
+      ...options,
       method: 'POST',
     });
   },
@@ -121,8 +124,8 @@ export const authApi = {
   /**
    * Get current authenticated user
    */
-  async me(): Promise<ApiResponse<{ user: User }>> {
-    return apiFetch('/auth/me');
+  async me(options?: ApiOptions): Promise<ApiResponse<{ user: User }>> {
+    return apiFetch('/auth/me', options);
   },
 };
 
@@ -134,8 +137,9 @@ export const habitsApi = {
   /**
    * Create a new habit
    */
-  async create(input: CreateHabitInput): Promise<ApiResponse<{ habit: Habit }>> {
+  async create(input: CreateHabitInput, options?: ApiOptions): Promise<ApiResponse<{ habit: Habit }>> {
     return apiFetch('/habits', {
+      ...options,
       method: 'POST',
       body: JSON.stringify(input),
     });
@@ -144,16 +148,19 @@ export const habitsApi = {
   /**
    * Get all habits with optional filtering and pagination
    */
-  async getAll(options?: {
+  async getAll(options?: ApiOptions & {
     isActive?: boolean;
     page?: number;
     limit?: number;
   }): Promise<PaginatedResponse<Habit>> {
+    const { isActive, page, limit, ...fetchOptions } = options || {};
     const response = await apiFetch<Habit[]>('/habits', {
+      ...fetchOptions,
       params: {
-        isActive: options?.isActive,
-        page: options?.page,
-        limit: options?.limit,
+        isActive,
+        page,
+        limit,
+        ...fetchOptions.params,
       },
     });
     return response as PaginatedResponse<Habit>;
@@ -162,15 +169,16 @@ export const habitsApi = {
   /**
    * Get a single habit by ID
    */
-  async getById(id: string): Promise<ApiResponse<{ habit: Habit }>> {
-    return apiFetch(`/habits/${id}`);
+  async getById(id: string, options?: ApiOptions): Promise<ApiResponse<{ habit: Habit }>> {
+    return apiFetch(`/habits/${id}`, options);
   },
 
   /**
    * Update a habit
    */
-  async update(id: string, input: UpdateHabitInput): Promise<ApiResponse<{ habit: Habit }>> {
+  async update(id: string, input: UpdateHabitInput, options?: ApiOptions): Promise<ApiResponse<{ habit: Habit }>> {
     return apiFetch(`/habits/${id}`, {
+      ...options,
       method: 'PUT',
       body: JSON.stringify(input),
     });
@@ -179,8 +187,9 @@ export const habitsApi = {
   /**
    * Delete a habit (soft delete)
    */
-  async delete(id: string): Promise<ApiResponse<null>> {
+  async delete(id: string, options?: ApiOptions): Promise<ApiResponse<null>> {
     return apiFetch(`/habits/${id}`, {
+      ...options,
       method: 'DELETE',
     });
   },
@@ -194,8 +203,9 @@ export const entriesApi = {
   /**
    * Create a new entry for a habit
    */
-  async create(habitId: string, input: CreateEntryInput): Promise<ApiResponse<{ entry: HabitEntry }>> {
+  async create(habitId: string, input: CreateEntryInput, options?: ApiOptions): Promise<ApiResponse<{ entry: HabitEntry }>> {
     return apiFetch(`/habits/${habitId}/entry`, {
+      ...options,
       method: 'POST',
       body: JSON.stringify(input),
     });
@@ -207,9 +217,11 @@ export const entriesApi = {
   async update(
     habitId: string,
     entryDate: string,
-    input: UpdateEntryInput
+    input: UpdateEntryInput,
+    options?: ApiOptions
   ): Promise<ApiResponse<{ entry: HabitEntry }>> {
     return apiFetch(`/habits/${habitId}/entry/${entryDate}`, {
+      ...options,
       method: 'PUT',
       body: JSON.stringify(input),
     });
@@ -220,19 +232,22 @@ export const entriesApi = {
    */
   async getHistory(
     habitId: string,
-    options?: {
+    options?: ApiOptions & {
       startDate?: string;
       endDate?: string;
       page?: number;
       limit?: number;
     }
   ): Promise<PaginatedResponse<HabitEntry>> {
+    const { startDate, endDate, page, limit, ...fetchOptions } = options || {};
     const response = await apiFetch<HabitEntry[]>(`/habits/${habitId}/history`, {
+      ...fetchOptions,
       params: {
-        startDate: options?.startDate,
-        endDate: options?.endDate,
-        page: options?.page,
-        limit: options?.limit,
+        startDate,
+        endDate,
+        page,
+        limit,
+        ...fetchOptions.params,
       },
     });
     return response as PaginatedResponse<HabitEntry>;
@@ -241,8 +256,9 @@ export const entriesApi = {
   /**
    * Delete an entry
    */
-  async delete(habitId: string, entryDate: string): Promise<ApiResponse<null>> {
+  async delete(habitId: string, entryDate: string, options?: ApiOptions): Promise<ApiResponse<null>> {
     return apiFetch(`/habits/${habitId}/entry/${entryDate}`, {
+      ...options,
       method: 'DELETE',
     });
   },
@@ -256,14 +272,14 @@ export const performanceApi = {
   /**
    * Get overall performance summary
    */
-  async getSummary(): Promise<ApiResponse<{ summary: PerformanceSummary }>> {
-    return apiFetch('/performance/summary');
+  async getSummary(options?: ApiOptions): Promise<ApiResponse<{ summary: PerformanceSummary }>> {
+    return apiFetch('/performance/summary', options);
   },
 
   /**
    * Get detailed performance for a specific habit
    */
-  async getHabitPerformance(habitId: string): Promise<ApiResponse<{ performance: HabitPerformance }>> {
-    return apiFetch(`/performance/habit/${habitId}`);
+  async getHabitPerformance(habitId: string, options?: ApiOptions): Promise<ApiResponse<{ performance: HabitPerformance }>> {
+    return apiFetch(`/performance/habit/${habitId}`, options);
   },
 };
