@@ -40,6 +40,8 @@ export interface Habit {
   startDate: string;
   endDate: string | null;
   isActive: boolean;
+  reminderTime: string | null;
+  timezone: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,6 +53,8 @@ export interface CreateHabitInput {
   scheduleDays?: number[];
   startDate: string;
   endDate?: string;
+  reminderTime?: string;
+  timezone?: string;
 }
 
 export interface UpdateHabitInput {
@@ -61,6 +65,8 @@ export interface UpdateHabitInput {
   startDate?: string;
   endDate?: string | null;
   isActive?: boolean;
+  reminderTime?: string | null;
+  timezone?: string;
 }
 
 // ============================================
@@ -207,5 +213,5 @@ export interface FormState {
   success: boolean;
   message: string;
   errors?: Record<string, string[]>;
-  data?: unknown;
+  data?: any;
 }

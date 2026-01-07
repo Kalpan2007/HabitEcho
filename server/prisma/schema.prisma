@@ -40,16 +40,20 @@ enum EntryStatus {
 // ============================================
 
 model User {
-  id            String     @id @default(uuid()) @db.Uuid
-  fullName      String     @db.VarChar(100)
-  email         String     @unique @db.VarChar(255)
-  password      String     @db.VarChar(255)
-  occupation    Occupation
-  dateOfBirth   DateTime?  @db.Date
-  age           Int?       @db.SmallInt
-  timezone      String     @default("UTC") @db.VarChar(50)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id                     String     @id @default(uuid()) @db.Uuid
+  fullName               String     @db.VarChar(100)
+  email                  String     @unique @db.VarChar(255)
+  password               String     @db.VarChar(255)
+  occupation             Occupation
+  dateOfBirth            DateTime?  @db.Date
+  age                    Int?       @db.SmallInt
+  timezone               String     @default("UTC") @db.VarChar(50)
+  emailVerified         Boolean    @default(false)
+  emailVerificationToken String?    @db.VarChar(255)
+  emailVerificationExpiry DateTime?
+  emailRemindersEnabled  Boolean    @default(true)
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
 
   // Relations
   habits        Habit[]
@@ -86,13 +90,15 @@ model Habit {
   startDate    DateTime  @db.Date
   endDate      DateTime? @db.Date
   isActive     Boolean   @default(true)
+  reminderTime String?   @db.VarChar(5) // "HH:mm" (24h)
+  timezone     String    @default("UTC") @db.VarChar(50) // User's timezone or specific habit timezone
   deletedAt    DateTime? // Soft delete timestamp
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   // Relations
-  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  entries HabitEntry[]
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs    HabitLog[]
 
   @@index([userId])
   @@index([isActive])
@@ -103,24 +109,26 @@ model Habit {
   @@map("habits")
 }
 
-model HabitEntry {
+model HabitLog {
   id              String      @id @default(uuid()) @db.Uuid
   habitId         String      @db.Uuid
-  entryDate       DateTime    @db.Date
-  status          EntryStatus
+  date            DateTime    @db.Date
+  completed       Boolean     @default(false)
+  status          EntryStatus @default(NOT_DONE)
   percentComplete Int?        @db.SmallInt // 0-100
   reason          String?     @db.VarChar(300)
   notes           String?     @db.VarChar(1000)
+  reminderSent    Boolean     @default(false)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
   // Relations
   habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
 
-  // One entry per habit per day
-  @@unique([habitId, entryDate])
+  // One log per habit per day
+  @@unique([habitId, date])
   @@index([habitId])
-  @@index([entryDate])
+  @@index([date])
   @@index([status])
-  @@map("habit_entries")
+  @@map("habit_logs")
 }

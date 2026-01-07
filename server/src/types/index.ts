@@ -57,6 +57,8 @@ export interface UserPublic {
   dateOfBirth: Date | null;
   age: number | null;
   timezone: string;
+  emailVerified: boolean;
+  emailRemindersEnabled: boolean;
   createdAt: Date;
 }
 
@@ -100,6 +102,8 @@ export interface CreateHabitInput {
   scheduleDays?: number[];
   startDate: string;
   endDate?: string;
+  reminderTime?: string; // "HH:mm"
+  timezone?: string;
 }
 
 export interface UpdateHabitInput {
@@ -110,6 +114,8 @@ export interface UpdateHabitInput {
   startDate?: string;
   endDate?: string | null;
   isActive?: boolean;
+  reminderTime?: string | null;
+  timezone?: string;
 }
 
 export interface HabitPublic {
@@ -121,37 +127,43 @@ export interface HabitPublic {
   startDate: Date;
   endDate: Date | null;
   isActive: boolean;
+  reminderTime: string | null;
+  timezone: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
 // ============================================
-// HABIT ENTRY TYPES
+// HABIT LOG TYPES
 // ============================================
 
-export interface CreateHabitEntryInput {
-  entryDate: string;
+export interface CreateHabitLogInput {
+  date: string;
   status: EntryStatus;
+  completed?: boolean;
   percentComplete?: number;
   reason?: string;
   notes?: string;
 }
 
-export interface UpdateHabitEntryInput {
+export interface UpdateHabitLogInput {
   status?: EntryStatus;
+  completed?: boolean;
   percentComplete?: number;
   reason?: string;
   notes?: string;
 }
 
-export interface HabitEntryPublic {
+export interface HabitLogPublic {
   id: string;
   habitId: string;
-  entryDate: Date;
+  date: Date;
   status: EntryStatus;
+  completed: boolean;
   percentComplete: number | null;
   reason: string | null;
   notes: string | null;
+  reminderSent: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
