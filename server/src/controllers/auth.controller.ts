@@ -19,17 +19,7 @@ export async function signup(
 ): Promise<void> {
   try {
     const result = await authService.signup(req.body);
-
-    // Set Access JWT in HttpOnly cookie
-    res.cookie('habitecho_access', result.accessToken, config.cookie.options);
-
-    // Set Refresh JWT in HttpOnly cookie
-    res.cookie('habitecho_refresh', result.refreshToken, {
-      ...config.cookie.options,
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    });
-
-    sendCreated(res, { user: result.user }, 'Registration successful');
+    sendCreated(res, result, 'Registration successful. Verification code sent.');
   } catch (error) {
     next(error);
   }
@@ -128,6 +118,52 @@ export async function logout(
 }
 
 /**
+ * POST /auth/verify-otp
+ * Verify 6-digit code and complete login
+ */
+export async function verifyOtp(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { email, otp } = req.body;
+    const result = await authService.verifyOtp(email, otp);
+
+    // Set Access JWT in HttpOnly cookie
+    res.cookie('habitecho_access', result.accessToken, config.cookie.options);
+
+    // Set Refresh JWT in HttpOnly cookie
+    res.cookie('habitecho_refresh', result.refreshToken, {
+      ...config.cookie.options,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+
+    sendSuccess(res, { user: result.user }, 'Email verified and logged in successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * POST /auth/resend-otp
+ * Resend a new verification code
+ */
+export async function resendOtp(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { email } = req.body;
+    const result = await authService.resendOtp(email);
+    sendSuccess(res, result, 'New verification code sent');
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * GET /auth/me
  * Get current authenticated user
  */
@@ -141,6 +177,25 @@ export async function getMe(
     const user = await authService.getUserById(userId);
 
     sendSuccess(res, { user }, 'User retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * PATCH /auth/preferences
+ * Update current user preferences
+ */
+export async function updatePreferences(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { userId } = req as AuthenticatedRequest;
+    const user = await authService.updatePreferences(userId, req.body);
+
+    sendSuccess(res, { user }, 'Preferences updated successfully');
   } catch (error) {
     next(error);
   }

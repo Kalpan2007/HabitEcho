@@ -64,5 +64,20 @@ export const loginSchema = z.object({
     .min(1, 'Password is required'),
 });
 
+export const verifyOtpSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  otp: z.string().length(6, 'OTP must be exactly 6 digits').regex(/^\d+$/, 'OTP must be numeric'),
+});
+
+export const resendOtpSchema = z.object({
+  email: z.string().email('Invalid email format'),
+});
+
+export const updatePreferencesSchema = z.object({
+  emailRemindersEnabled: z.boolean().optional(),
+  timezone: z.string().max(50).optional(),
+});
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;

@@ -2,34 +2,13 @@ import { Router } from 'express';
 import { authController } from '../controllers/index.js';
 import { authenticate, validate } from '../middlewares/index.js';
 import { authRateLimiter } from '../middlewares/index.js';
-import { signupSchema, loginSchema } from '../validations/index.js';
+import { signupSchema, loginSchema, updatePreferencesSchema, verifyOtpSchema, resendOtpSchema } from '../validations/index.js';
 
 const router = Router();
 
 /**
  * POST /auth/signup
  * Register a new user
- * 
- * Request Body:
- * {
- *   "fullName": "John Doe",
- *   "email": "john@example.com",
- *   "phoneNumber": "+1234567890",
- *   "password": "SecureP@ss123",
- *   "occupation": "ENGINEER",
- *   "dateOfBirth": "1990-01-15",
- *   "timezone": "America/New_York"
- * }
- * 
- * Response:
- * {
- *   "success": true,
- *   "message": "Registration successful. Please verify your email.",
- *   "data": {
- *     "user": { ... },
- *     "otpSent": true
- *   }
- * }
  */
 router.post(
   '/signup',
@@ -41,23 +20,6 @@ router.post(
 /**
  * POST /auth/login
  * Login and receive JWT in HttpOnly cookie
- * 
- * Request Body:
- * {
- *   "email": "john@example.com",
- *   "password": "SecureP@ss123"
- * }
- * 
- * Response:
- * {
- *   "success": true,
- *   "message": "Login successful",
- *   "data": {
- *     "user": { ... }
- *   }
- * }
- * 
- * Note: JWT is set in HttpOnly cookie, not returned in response body
  */
 router.post(
   '/login',
@@ -75,15 +37,36 @@ router.post('/refresh', authController.refresh);
 /**
  * POST /auth/logout
  * Logout and clear authentication cookie
- * Requires authentication
  */
 router.post('/logout', authenticate, authController.logout);
 
 /**
+ * POST /auth/verify-otp
+ * Complete email verification via OTP
+ */
+router.post('/verify-otp', validate(verifyOtpSchema), authController.verifyOtp);
+
+/**
+ * POST /auth/resend-otp
+ * Resend a new OTP code
+ */
+router.post('/resend-otp', validate(resendOtpSchema), authController.resendOtp);
+
+/**
  * GET /auth/me
  * Get current authenticated user profile
- * Requires authentication
  */
 router.get('/me', authenticate, authController.getMe);
+
+/**
+ * PATCH /auth/preferences
+ * Update current user preferences
+ */
+router.patch(
+  '/preferences',
+  authenticate,
+  validate(updatePreferencesSchema),
+  authController.updatePreferences
+);
 
 export default router;

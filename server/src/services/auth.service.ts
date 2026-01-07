@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import { hashPassword, comparePassword } from '../utils/crypto.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
@@ -5,6 +6,7 @@ import {
   ConflictError,
   NotFoundError,
   UnauthorizedError,
+  BadRequestError,
 } from '../utils/errors.js';
 import type {
   SignupInput,
@@ -13,6 +15,7 @@ import type {
   AuthResponse,
   Occupation
 } from '../types/index.js';
+import { sendVerificationEmail } from './email.service.js';
 
 /**
  * Format user for public response
@@ -26,6 +29,8 @@ function formatUserPublic(user: any): UserPublic {
     dateOfBirth: user.dateOfBirth,
     age: user.age,
     timezone: user.timezone,
+    emailVerified: user.emailVerified,
+    emailRemindersEnabled: user.emailRemindersEnabled,
     createdAt: user.createdAt,
   };
 }
@@ -54,9 +59,9 @@ async function generateAuthResponse(userId: string, user: any): Promise<AuthResp
 }
 
 /**
- * Register a new user
+ * Register a new user (Stage 1: Send OTP)
  */
-export async function signup(input: SignupInput): Promise<AuthResponse> {
+export async function signup(input: SignupInput): Promise<{ message: string; email: string }> {
   const { fullName, email, password, occupation, dateOfBirth, age, timezone } = input;
 
   const existingUser = await (prisma as any).user.findUnique({
@@ -64,12 +69,22 @@ export async function signup(input: SignupInput): Promise<AuthResponse> {
   });
 
   if (existingUser) {
-    throw new ConflictError('Email already registered');
+    if (existingUser.emailVerified) {
+      throw new ConflictError('Email already registered');
+    }
+    // If user exists but not verified, we can allow re-signing or just resending OTP.
+    // Let's delete the unverified user to allow fresh signup with potentially updated password/details.
+    await (prisma as any).user.delete({ where: { id: existingUser.id } });
   }
 
   const hashedPassword = await hashPassword(password);
 
-  const user = await (prisma as any).user.create({
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+  const otpExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+  await (prisma as any).user.create({
     data: {
       fullName,
       email,
@@ -78,11 +93,86 @@ export async function signup(input: SignupInput): Promise<AuthResponse> {
       dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
       age,
       timezone: timezone || 'UTC',
+      emailVerified: false,
+      emailVerificationToken: hashedOtp,
+      emailVerificationExpiry: otpExpiry,
     },
   });
 
-  return generateAuthResponse(user.id, user);
+  // Send OTP email
+  await sendVerificationEmail(email, otp, fullName);
+
+  return {
+    message: 'Verification code sent to your email',
+    email
+  };
 }
+
+/**
+ * Verify OTP and complete registration (Stage 2)
+ */
+export async function verifyOtp(email: string, otp: string): Promise<AuthResponse> {
+  const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+
+  const user = await (prisma as any).user.findFirst({
+    where: {
+      email,
+      emailVerificationToken: hashedOtp,
+      emailVerificationExpiry: {
+        gt: new Date(),
+      },
+    },
+  });
+
+  if (!user) {
+    throw new BadRequestError('Invalid or expired verification code');
+  }
+
+  const updatedUser = await (prisma as any).user.update({
+    where: { id: user.id },
+    data: {
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpiry: null,
+    },
+  });
+
+  return generateAuthResponse(updatedUser.id, updatedUser);
+}
+
+/**
+ * Resend OTP code
+ */
+export async function resendOtp(email: string): Promise<{ message: string }> {
+  const user = await (prisma as any).user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  if (user.emailVerified) {
+    throw new BadRequestError('Email is already verified');
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+  const otpExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+  await (prisma as any).user.update({
+    where: { id: user.id },
+    data: {
+      emailVerificationToken: hashedOtp,
+      emailVerificationExpiry: otpExpiry,
+    },
+  });
+
+  await sendVerificationEmail(email, otp, user.fullName);
+
+  return { message: 'New verification code sent' };
+}
+
 
 /**
  * Login user
@@ -102,6 +192,10 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
 
   if (!isValidPassword) {
     throw new UnauthorizedError('Invalid email or password');
+  }
+
+  if (!user.emailVerified) {
+    throw new UnauthorizedError('Please verify your email before logging in');
   }
 
   return generateAuthResponse(user.id, user);
@@ -180,4 +274,16 @@ export async function getUserTimezone(userId: string): Promise<string> {
   });
 
   return user?.timezone || 'UTC';
+}
+
+/**
+ * Update user preferences
+ */
+export async function updatePreferences(userId: string, input: any): Promise<UserPublic> {
+  const user = await (prisma as any).user.update({
+    where: { id: userId },
+    data: input,
+  });
+
+  return formatUserPublic(user);
 }
