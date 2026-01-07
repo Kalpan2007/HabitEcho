@@ -41,18 +41,39 @@ export default function LoginPage() {
   }, [state, success, error, queryClient]);
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">
-        Sign in to your account
-      </h2>
+    <div className="space-y-8">
+      <div className="space-y-3 text-center sm:text-left">
+        <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-slate-500 sm:text-xs">
+          Access console
+        </span>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
+            Welcome back to <span className="text-transparent bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text">HabitEcho</span>
+          </h2>
+          <p className="text-sm text-slate-500">
+            Authenticate to sync your streak radar, predictive prompts, and Supabase-secured telemetry.
+          </p>
+        </div>
+        <div className="hidden gap-4 text-left sm:grid sm:grid-cols-2">
+          {[
+            { title: 'Dual-token security', value: 'Rotating refresh + HttpOnly' },
+            { title: 'Realtime hydration', value: 'TanStack Query v5' },
+          ].map((item) => (
+            <div key={item.title} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">{item.title}</p>
+              <p className="text-sm font-semibold text-slate-900">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <form action={formAction} className="space-y-5">
         <Input
-          label="Email address"
+          label="Work email"
           name="email"
           type="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder="you@habitecho.com"
           required
           error={state.errors?.email?.[0]}
         />
@@ -67,33 +88,37 @@ export default function LoginPage() {
           error={state.errors?.password?.[0]}
         />
 
+        <div className="flex items-center justify-between text-sm text-slate-500">
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="remember"
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            Remember device
+          </label>
+          <Link href="#" className="font-semibold text-indigo-600 hover:text-indigo-500">
+            Forgot password?
+          </Link>
+        </div>
+
         <Button
           type="submit"
-          className="w-full"
+          className="w-full py-3 text-base shadow-lg shadow-indigo-200"
           isLoading={isPending}
         >
-          Sign in
+          Enter studio
         </Button>
       </form>
 
-      <div className="mt-6">
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200" />
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">
-              New to HabitEcho?
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-6">
+      <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-sm text-slate-600">
+        <div className="flex items-center justify-between">
+          <span>Need an account?</span>
           <Link
             href={ROUTES.SIGNUP}
-            className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            className="rounded-full border border-slate-200 px-4 py-1.5 font-semibold text-indigo-600 hover:text-indigo-500"
           >
-            Create an account
+            Create one
           </Link>
         </div>
       </div>

@@ -81,16 +81,36 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="max-w-md mx-auto space-y-8">
+      <div className="space-y-3 text-center sm:text-left">
+        <span className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-indigo-600 sm:text-xs">
+          Step {step} of 2
+        </span>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
+            {step === 1 ? 'Create your private studio' : 'Verify your access'}
+          </h2>
+          <p className="text-sm text-slate-500">
+            {step === 1
+              ? 'We’ll tune HabitEcho to your cadence—share a few details to begin.'
+              : `Enter the 6-digit verification code sent to ${email}.`}
+          </p>
+        </div>
+        <div className="hidden gap-4 text-left sm:grid sm:grid-cols-2">
+          {[
+            { title: 'Enterprise-ready', value: 'Zero-trust security grid' },
+            { title: 'Timezone aware', value: 'Intelligent reminder engine' },
+          ].map((item) => (
+            <div key={item.title} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">{item.title}</p>
+              <p className="text-sm font-semibold text-slate-900">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {step === 1 ? (
         <>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 truncate">
-            Begin your journey
-          </h2>
-          <p className="text-gray-500 mb-8 text-sm">
-            Fill in your details to create an account.
-          </p>
-
           <form action={signupFormAction} className="space-y-5">
             <Input
               label="Full name"
@@ -133,14 +153,14 @@ export default function SignupPage() {
             />
 
             {/* Date of Birth / Age Toggle */}
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <div className="flex items-center justify-between mb-3">
-                <span className="block text-sm font-semibold text-gray-700">
+                <span className="block text-sm font-semibold text-slate-700">
                   {useAge ? 'Your Age' : 'Date of Birth'}
                 </span>
                 <button
                   type="button"
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-500 px-2 py-1 bg-white rounded-md border border-gray-200 shadow-sm transition-all"
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-500 px-2 py-1 bg-white rounded-md border border-slate-200 shadow-sm transition-all"
                   onClick={() => setUseAge(!useAge)}
                 >
                   Use {useAge ? 'date of birth' : 'age'} instead
@@ -242,9 +262,9 @@ export default function SignupPage() {
         </div>
       )}
 
-      <div className="mt-8 border-t border-gray-100 pt-6">
+      <div className="border-t border-slate-100 pt-6">
         <div className="flex justify-center text-sm">
-          <span className="text-gray-500 mr-2">Already have an account?</span>
+          <span className="text-slate-500 mr-2">Already have an account?</span>
           <Link href={ROUTES.LOGIN} className="font-semibold text-indigo-600 hover:text-indigo-500 underline decoration-indigo-200 underline-offset-4">
             Sign in
           </Link>
