@@ -8,7 +8,7 @@ import type { AuthenticatedRequest } from '../types/index.js';
  */
 export async function isEmailVerified(
     req: Request,
-    res: Response,
+    _res: Response,
     next: NextFunction
 ): Promise<void> {
     try {

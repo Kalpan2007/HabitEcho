@@ -1,10 +1,19 @@
 import { ReactNode } from 'react';
+import { Metadata } from 'next';
 import { Logo } from '@/components/ui';
 
 // ============================================
 // AUTH LAYOUT
 // Server Component - wraps all auth pages
 // ============================================
+
+// Auth pages metadata - allow indexing for signup, but not deep crawling
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: true,
+  },
+};
 
 interface AuthLayoutProps {
   children: ReactNode;

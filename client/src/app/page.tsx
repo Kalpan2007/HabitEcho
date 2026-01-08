@@ -3,6 +3,8 @@ import { ROUTES } from '@/lib/constants';
 import { Metadata } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { Logo } from '@/components/ui';
+import { SEO_ROUTES } from '@/lib/seo.config';
+import { FAQSchema } from '@/components/seo/StructuredData';
 
 const display = Plus_Jakarta_Sans({
   weight: ['400', '500', '600', '700'],
@@ -10,9 +12,20 @@ const display = Plus_Jakarta_Sans({
   display: 'swap',
 });
 
+// SEO-optimized metadata for homepage
 export const metadata: Metadata = {
-  title: 'HabitEcho — Precision Habit Intelligence',
-  description: 'A private-first habit intelligence platform with adaptive insights, effortless tracking, and deep accountability.',
+  title: SEO_ROUTES.HOME.title,
+  description: SEO_ROUTES.HOME.description,
+  keywords: 'habit tracker, habit tracking app, daily habits, habit building, streak tracker, productivity habits, behavioral analytics, routine tracking, personal growth, self-improvement',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: SEO_ROUTES.HOME.title,
+    description: SEO_ROUTES.HOME.description,
+    url: '/',
+    type: 'website',
+  },
 };
 
 const differentiators = [
@@ -81,6 +94,34 @@ const architecturePoints = [
   'React Query cache hygiene ensures logout clears user data immediately.',
 ];
 
+// SEO-optimized FAQ for rich snippets
+const habitTrackingFAQs = [
+  {
+    question: "What is HabitEcho and how does it help with habit tracking?",
+    answer: "HabitEcho is an enterprise-grade habit tracking platform that helps you build and maintain daily habits through predictive analytics, streak monitoring, and behavioral insights. Unlike basic habit trackers, HabitEcho provides real-time momentum scoring, performance heatmaps, and data-driven recommendations to optimize your routine and ensure consistent habit formation.",
+  },
+  {
+    question: "How is HabitEcho different from other habit trackers?",
+    answer: "HabitEcho stands out with enterprise-level features including: predictive momentum analytics that forecast habit sustainability, advanced streak tracking with visual heatmaps, dual-token security for privacy, optimized performance (sub-120ms response times), and granular scheduling options for daily, weekly, and custom cadences. It's built for professionals who take behavioral change seriously.",
+  },
+  {
+    question: "Can HabitEcho help me build daily habits and morning routines?",
+    answer: "Yes! HabitEcho excels at building consistent daily habits and morning routines. Set custom schedules for habits like exercise, meditation, reading, or any personal routine. Track completion streaks, receive reminders, and analyze your performance over time to identify patterns and optimize your daily schedule for maximum consistency.",
+  },
+  {
+    question: "What types of habits can I track with HabitEcho?",
+    answer: "You can track any type of habit: productivity habits (deep work, time blocking), health habits (exercise, nutrition, sleep), mindfulness habits (meditation, journaling), learning habits (reading, skill practice), and social habits (networking, relationships). HabitEcho supports daily, weekly, and custom frequency scheduling to match your specific routine needs.",
+  },
+  {
+    question: "Is HabitEcho free to use?",
+    answer: "HabitEcho offers a free tier with core habit tracking features including unlimited habits, streak monitoring, basic analytics, and mobile access. Premium features like advanced predictive analytics, extended history, and priority support are available in paid plans for serious habit builders.",
+  },
+  {
+    question: "How does habit streak tracking work in HabitEcho?",
+    answer: "HabitEcho's streak tracker automatically counts consecutive completions of your habits and visualizes your progress through heatmaps and trend charts. The system calculates momentum scores, identifies at-risk streaks, and provides insights to help you maintain consistency. You can see daily, weekly, and monthly streak patterns to understand your behavioral trends.",
+  },
+];
+
 export default function LandingPage() {
   return (
     <main className={`${display.className} bg-slate-50`}>
@@ -107,18 +148,19 @@ export default function LandingPage() {
           <section id="platform" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-6 py-8 lg:flex-row lg:items-start lg:py-12">
             <div className="flex-1 space-y-8">
               <div className="inline-flex rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-indigo-600">
-                High-Performance Behavioral Engineering Platform
+                Professional Habit Tracking Platform
               </div>
               <h1 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl lg:text-[2.9rem] lg:leading-snug">
-                HabitEcho
-                <span className="block bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  high-fidelity habit telemetry
+                HabitEcho: Build Better Habits with 
+                <span className="block bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  {' '}Precision Habit Tracking & Analytics
                 </span>
-                engineered for enterprise-grade personal growth.
               </h1>
               <p className="text-base text-slate-600 sm:text-lg">
-                Built with Next.js 16, TanStack Query v5, and an Express + Prisma backend, HabitEcho couples predictive analytics,
-                low-latency hydration, and a zero-trust security posture so serious performers can stay in flow.
+                Transform your daily routine with HabitEcho's enterprise-grade habit tracker. 
+                Monitor habit streaks, analyze behavioral patterns, and build lasting habits 
+                with predictive analytics and real-time insights. Perfect for professionals 
+                who take personal growth seriously.
               </p>
               <div className="flex flex-wrap gap-2">
                 {techBadges.map((badge) => (
@@ -213,14 +255,15 @@ export default function LandingPage() {
 
         <section className="landing-section" id="intelligence">
           <div className="section-heading">
-            <p>Why HabitEcho is different</p>
-            <h2>Everything here mirrors the production architecture documented in our README.</h2>
+            <p className="text-indigo-600 font-semibold uppercase text-sm tracking-wide">Key Differentiators</p>
+            <h2 className="text-3xl font-bold text-slate-900 mt-2">Why HabitEcho is the Best Habit Tracker for Serious Growth</h2>
+            <p className="text-slate-600 mt-4 max-w-3xl">Everything here mirrors production-grade architecture with enterprise features that traditional habit trackers lack.</p>
           </div>
           <div className="differentiator-grid">
             {differentiators.map((item) => (
               <article key={item.title} className="differentiator-card">
-                <h3>{item.title}</h3>
-                <p>{item.description}</p>
+                <h3 className="text-lg font-semibold text-slate-900">{item.title}</h3>
+                <p className="text-slate-600 mt-2">{item.description}</p>
               </article>
             ))}
           </div>
@@ -265,16 +308,17 @@ export default function LandingPage() {
 
         <section className="landing-section feature-matrix">
           <div className="section-heading">
-            <p>Key capabilities</p>
-            <h2>Production features shipping today.</h2>
+            <p className="text-indigo-600 font-semibold uppercase text-sm tracking-wide">Comprehensive Features</p>
+            <h2 className="text-3xl font-bold text-slate-900 mt-2">Advanced Habit Tracking Capabilities</h2>
+            <p className="text-slate-600 mt-4 max-w-3xl">Production features designed for professionals who demand precision in their habit formation journey.</p>
           </div>
           <div className="matrix-grid">
             {featureMatrix.map((row) => (
               <div key={row.feature} className="matrix-row">
                 <p className="matrix-category">{row.category}</p>
                 <div>
-                  <h3>{row.feature}</h3>
-                  <p>{row.benefit}</p>
+                  <h3 className="text-lg font-semibold text-slate-900">{row.feature}</h3>
+                  <p className="text-slate-600 mt-1">{row.benefit}</p>
                 </div>
               </div>
             ))}
@@ -283,8 +327,9 @@ export default function LandingPage() {
 
         <section className="landing-section architecture" id="architecture">
           <div className="section-heading">
-            <p>Architecture snapshot</p>
-            <h2>Decoupled Next.js + Express stack with Supabase/Postgres at the core.</h2>
+            <p className="text-indigo-600 font-semibold uppercase text-sm tracking-wide">Technical Excellence</p>
+            <h2 className="text-3xl font-bold text-slate-900 mt-2">Built on Modern, Scalable Architecture</h2>
+            <p className="text-slate-600 mt-4 max-w-3xl">Decoupled Next.js + Express stack with PostgreSQL for enterprise-grade performance and reliability.</p>
           </div>
           <div className="architecture-card">
             <div className="architecture-diagram">
@@ -301,11 +346,75 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <footer className="landing-footer">
-          <p>© {new Date().getFullYear()} HabitEcho. Built for focused humans.</p>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <Link href={ROUTES.LOGIN} className="hover:text-indigo-600">Login</Link>
-            <Link href={ROUTES.SIGNUP} className="hover:text-indigo-600">Signup</Link>
+        {/* FAQ Section - Critical for SEO rich snippets */}
+        <section className="landing-section bg-slate-50" id="faq">
+          <FAQSchema faqs={habitTrackingFAQs} />
+          <div className="section-heading">
+            <p className="text-indigo-600 font-semibold uppercase text-sm tracking-wide">Frequently Asked Questions</p>
+            <h2 className="text-3xl font-bold text-slate-900 mt-2">Everything You Need to Know About HabitEcho</h2>
+          </div>
+          <div className="max-w-4xl mx-auto space-y-6">
+            {habitTrackingFAQs.map((faq, index) => (
+              <details key={index} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition">
+                <summary className="text-lg font-semibold text-slate-900 cursor-pointer list-none flex items-center justify-between">
+                  <span>{faq.question}</span>
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </summary>
+                <p className="mt-4 text-slate-600 leading-relaxed">{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <footer className="landing-footer bg-slate-900 text-white py-12">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="grid md:grid-cols-4 gap-8 mb-8">
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Logo size={32} showText={false} />
+                  <span className="text-xl font-bold">HabitEcho</span>
+                </div>
+                <p className="text-slate-400 text-sm">Precision habit tracking for professionals who take personal growth seriously.</p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-4">Product</h3>
+                <ul className="space-y-2 text-sm text-slate-400">
+                  <li><a href="#platform" className="hover:text-white transition">Features</a></li>
+                  <li><a href="#intelligence" className="hover:text-white transition">Why HabitEcho</a></li>
+                  <li><a href="#evidence" className="hover:text-white transition">Testimonials</a></li>
+                  <li><a href="/features/habit-tracking" className="hover:text-white transition">Habit Tracking</a></li>
+                  <li><a href="/features/analytics" className="hover:text-white transition">Analytics</a></li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-4">Use Cases</h3>
+                <ul className="space-y-2 text-sm text-slate-400">
+                  <li><a href="/use-cases/daily-habits" className="hover:text-white transition">Daily Habits</a></li>
+                  <li><a href="/use-cases/productivity-habits" className="hover:text-white transition">Productivity</a></li>
+                  <li><a href="/use-cases/morning-routine" className="hover:text-white transition">Morning Routine</a></li>
+                  <li><a href="/use-cases/fitness-habits" className="hover:text-white transition">Fitness & Health</a></li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-4">Get Started</h3>
+                <ul className="space-y-2 text-sm text-slate-400">
+                  <li><Link href={ROUTES.SIGNUP} className="hover:text-white transition">Sign Up Free</Link></li>
+                  <li><Link href={ROUTES.LOGIN} className="hover:text-white transition">Login</Link></li>
+                  <li><a href="#faq" className="hover:text-white transition">FAQ</a></li>
+                </ul>
+              </div>
+            </div>
+            <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-slate-400 text-sm">© {new Date().getFullYear()} HabitEcho. Built for focused humans who value consistency.</p>
+              <div className="flex items-center gap-6 text-sm text-slate-400">
+                <a href="/privacy" className="hover:text-white transition">Privacy</a>
+                <a href="/terms" className="hover:text-white transition">Terms</a>
+                <Link href={ROUTES.LOGIN} className="hover:text-white transition">Login</Link>
+                <Link href={ROUTES.SIGNUP} className="bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-500 transition">Get Started</Link>
+              </div>
+            </div>
           </div>
         </footer>
         </div>

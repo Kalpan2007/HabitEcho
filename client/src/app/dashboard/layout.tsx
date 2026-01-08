@@ -1,12 +1,24 @@
 import { ReactNode } from 'react';
+import { Metadata } from 'next';
 import { requireAuth } from '@/lib/auth';
 import { Sidebar, MobileNav } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
+import { SEO_ROUTES } from '@/lib/seo.config';
 
 // ============================================
 // DASHBOARD LAYOUT
 // Server Component - handles auth check
 // ============================================
+
+// Dashboard metadata - noindex since it's private/authenticated
+export const metadata: Metadata = {
+  title: SEO_ROUTES.DASHBOARD.title,
+  description: SEO_ROUTES.DASHBOARD.description,
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 interface DashboardLayoutProps {
   children: ReactNode;

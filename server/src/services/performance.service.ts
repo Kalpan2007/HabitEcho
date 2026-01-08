@@ -456,7 +456,7 @@ export async function getHabitPerformance(
   );
 
   const heatmapData: HeatmapEntry[] = heatmapDates.map(date => {
-    const entry = entryMap.get(date);
+    const entry = entryMap.get(date) as any;
     const isScheduled = isDateScheduled(
       new Date(date),
       habit.frequency,
