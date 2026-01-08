@@ -16,14 +16,16 @@ async function startServer(): Promise<void> {
     initCronJobs();
 
     // Start HTTP server
-    const server = app.listen(config.port, () => {
+    const HOST = '0.0.0.0'; // Bind to all network interfaces (required for Render)
+    const server = app.listen(config.port, HOST, () => {
       logger.info(
         {
+          host: HOST,
           port: config.port,
           env: config.env,
           nodeVersion: process.version,
         },
-        `🚀 HabitEcho server is running on port ${config.port}`
+        `🚀 HabitEcho server is running on ${HOST}:${config.port}`
       );
     });
 
