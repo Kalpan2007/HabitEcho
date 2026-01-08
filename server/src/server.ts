@@ -35,7 +35,7 @@ async function startServer(): Promise<void> {
       logger.info({ signal }, 'Received shutdown signal, starting graceful shutdown...');
 
       // Stop accepting new connections
-      server.close(async (err) => {
+      server.close(async (err: Error | undefined) => {
         if (err) {
           logger.error({ error: err }, 'Error during server close');
           process.exit(1);

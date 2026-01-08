@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import authRoutes from './auth.routes.js';
 import habitRoutes from './habit.routes.js';
 import performanceRoutes from './performance.routes.js';
@@ -6,7 +6,7 @@ import performanceRoutes from './performance.routes.js';
 const router = Router();
 
 // Health check endpoint
-router.get('/health', (_req, res) => {
+router.get('/health', (_req: Request, res: Response) => {
   res.json({
     success: true,
     message: 'HabitEcho API is running',
