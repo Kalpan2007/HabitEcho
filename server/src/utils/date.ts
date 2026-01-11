@@ -35,10 +35,15 @@ export function parseAndNormalizeDate(dateString: string, tz: string = 'UTC'): D
 }
 
 /**
- * Format date for API response
+ * Format date for API response.
+ * IMPORTANT: Pass the user's timezone to ensure dates display correctly in their local time.
+ * Without a timezone, defaults to UTC which may shift dates for non-UTC users.
  */
-// Format date using UTC to avoid server timezone shifts
-export function formatDate(date: Date | Dayjs, format: string = 'YYYY-MM-DD'): string {
+export function formatDate(date: Date | Dayjs, format: string = 'YYYY-MM-DD', tz?: string): string {
+  if (tz) {
+    return dayjs(date).tz(tz).format(format);
+  }
+  // Default to UTC for backward compatibility with existing callers
   return dayjs(date).utc().format(format);
 }
 

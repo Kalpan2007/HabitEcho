@@ -11,10 +11,10 @@ export const prisma =
   new PrismaClient({
     log: config.isDevelopment
       ? [
-          { emit: 'event', level: 'query' },
-          { emit: 'event', level: 'error' },
-          { emit: 'event', level: 'warn' },
-        ]
+        { emit: 'event', level: 'query' },
+        { emit: 'event', level: 'error' },
+        { emit: 'event', level: 'warn' },
+      ]
       : [{ emit: 'event', level: 'error' }],
   });
 

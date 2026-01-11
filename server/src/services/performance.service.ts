@@ -28,7 +28,8 @@ function countsTowardStreak(status: string, percentComplete: number | null): boo
 
 function calculateStreaks(
   entries: Array<{ date: Date; status: string; percentComplete: number | null }>,
-  scheduledDates: string[]
+  scheduledDates: string[],
+  timezone: string
 ): StreakInfo {
   let currentStreak = 0;
   let longestStreak = 0;
@@ -36,7 +37,7 @@ function calculateStreaks(
   const dateSet = new Set(scheduledDates);
 
   for (const scheduled of scheduledDates) {
-    const entry = entries.find((e) => formatDate(e.date) === scheduled);
+    const entry = entries.find((e) => formatDate(e.date, 'YYYY-MM-DD', timezone) === scheduled);
     if (entry && countsTowardStreak(entry.status, entry.percentComplete)) {
       currentStreak += 1;
       longestStreak = Math.max(longestStreak, currentStreak);
@@ -53,14 +54,29 @@ async function calculateRollingAverage(
   days: number,
   timezone: string
 ): Promise<number> {
+  const habit = await prisma.habit.findUnique({
+    where: { id: habitId },
+    select: { startDate: true, createdAt: true, frequency: true, scheduleDays: true },
+  });
+
+  if (!habit) return 0;
+
   const end = dayjs().tz(timezone).endOf('day');
-  const start = end.subtract(days - 1, 'day').startOf('day');
+  // Clamp start date to habit start date if habit is newer than the window
+  const windowStart = end.subtract(days - 1, 'day').startOf('day');
+  const habitStart = dayjs(habit.startDate).tz(timezone).startOf('day');
+
+  // Initial start calculation
+  let start = habitStart.isAfter(windowStart) ? habitStart : windowStart;
+
+  // If the habit hasn't started yet (future start date), return 0
+  if (start.isAfter(end)) return 0;
 
   const logs = await prisma.habitLog.findMany({
     where: {
       habitId,
       date: {
-        gte: start.toDate(),
+        gte: start.toDate(), // Fetch from the earliest potential start
         lte: end.toDate(),
       },
     },
@@ -68,9 +84,35 @@ async function calculateRollingAverage(
     select: { status: true, percentComplete: true, date: true },
   });
 
-  const scheduledDates = generateDateRange(start.toDate(), end.toDate());
-  const entries = logs.map((l) => ({ status: l.status, percentComplete: l.percentComplete }));
+  // Intelligent Clamping:
+  // If the calculated start date is BEFORE the habit's creation date (e.g. due to timezone defaults),
+  // AND the user has NOT logged any entries between 'start' and 'createdAt',
+  // Then clamp the start to 'createdAt' to avoid penalizing for days before the habit existed.
+  const createdStart = dayjs(habit.createdAt).tz(timezone).startOf('day');
 
+  if (start.isBefore(createdStart)) {
+    const hasPreCreationLogs = logs.some(l => dayjs(l.date).tz(timezone).isBefore(createdStart));
+    if (!hasPreCreationLogs) {
+      if (createdStart.isAfter(start)) {
+        start = createdStart;
+      }
+    }
+  }
+
+  // Filter logs to the final start date (using timezone-aware comparison)
+  const relevantLogs = logs.filter(l => dayjs(l.date).tz(timezone).isSameOrAfter(start, 'day'));
+
+  // Generate all days in range, then filter for days where the habit is actually scheduled
+  // Use utc(true) to keep the local time (e.g. 00:00) when converting to UTC-based Date for generation
+  // This prevents shifting to the previous day due to timezone offsets.
+  const rangeParams = generateDateRange(start.utc(true).toDate(), end.utc(true).toDate());
+  const scheduledDates = rangeParams.filter(dateStr =>
+    isDateScheduled(new Date(dateStr), habit.frequency, habit.scheduleDays as number[], timezone)
+  );
+
+  const entries = relevantLogs.map((l) => ({ status: l.status, percentComplete: l.percentComplete }));
+
+  // Use the count of actually scheduled days as the denominator
   return calculateCompletionRate(entries, scheduledDates.length);
 }
 
@@ -182,7 +224,7 @@ async function calculateUserRollingAverage(
     select: { status: true, percentComplete: true, date: true },
   });
 
-  const scheduledDates = generateDateRange(start.toDate(), end.toDate());
+  const scheduledDates = generateDateRange(start.utc(true).toDate(), end.utc(true).toDate());
   const entries = logs.map((l) => ({ status: l.status, percentComplete: l.percentComplete }));
 
   return calculateCompletionRate(entries, scheduledDates.length);
@@ -207,8 +249,8 @@ async function calculateUserStreaks(
     select: { status: true, percentComplete: true, date: true },
   });
 
-  const scheduledDates = generateDateRange(start.toDate(), end.toDate());
-  const streaks = calculateStreaks(logs, scheduledDates);
+  const scheduledDates = generateDateRange(start.utc(true).toDate(), end.utc(true).toDate());
+  const streaks = calculateStreaks(logs, scheduledDates, timezone);
   return streaks;
 }
 
@@ -238,7 +280,7 @@ async function calculateMomentum(
 
   const last7End = dayjs().tz(timezone).endOf('day');
   const last7Start = last7End.subtract(6, 'day').startOf('day');
-  const last7Dates = generateDateRange(last7Start.toDate(), last7End.toDate());
+  const last7Dates = generateDateRange(last7Start.utc(true).toDate(), last7End.utc(true).toDate());
 
   const recentEntriesByHabit = new Map<string, Array<{ status: string; percentComplete: number | null }>>();
   for (const log of logs) {
@@ -294,7 +336,7 @@ export async function getHabitPerformance(
 
   const start = dayjs(entries[0]?.date).tz(timezone).startOf('day');
   const end = dayjs(entries[entries.length - 1]?.date).tz(timezone).endOf('day');
-  const scheduledDates = generateDateRange(start.toDate(), end.toDate());
+  const scheduledDates = generateDateRange(start.utc(true).toDate(), end.utc(true).toDate());
 
   const rollingAverage = await calculateRollingAverage(habitId, 7, timezone);
   const momentum = await calculateHabitMomentum(habitId, timezone);
@@ -304,8 +346,8 @@ export async function getHabitPerformance(
     name: habit.name,
     rollingAverage,
     momentum,
-    streaks: calculateStreaks(entries, scheduledDates),
-    heatmap: entries.map((e) => ({ date: formatDate(e.date), status: e.status as EntryStatus })),
+    streaks: calculateStreaks(entries, scheduledDates, timezone),
+    heatmap: entries.map((e) => ({ date: formatDate(e.date, 'YYYY-MM-DD', timezone), status: e.status as EntryStatus })),
   };
 }
 
@@ -335,7 +377,7 @@ async function calculateHabitMomentum(
 
   const last7End = dayjs().tz(timezone).endOf('day');
   const last7Start = last7End.subtract(6, 'day').startOf('day');
-  const last7Dates = generateDateRange(last7Start.toDate(), last7End.toDate());
+  const last7Dates = generateDateRange(last7Start.utc(true).toDate(), last7End.utc(true).toDate());
 
   const entries = logs.map((l) => ({ status: l.status, percentComplete: l.percentComplete }));
   const current = calculateCompletionRate(entries.slice(-7), last7Dates.length);
