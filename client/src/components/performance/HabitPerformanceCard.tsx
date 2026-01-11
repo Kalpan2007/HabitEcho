@@ -20,81 +20,57 @@ export function HabitPerformanceCard({ habit, performance }: HabitPerformanceCar
 
   return (
     <Card>
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <Link
-            href={ROUTES.HABIT_DETAIL(habit.id)}
-            className="text-lg font-semibold text-gray-900 hover:text-indigo-600 transition-colors"
-          >
-            {habit.name}
-          </Link>
-          <div className="flex items-center gap-2 mt-1">
-            <FrequencyBadge frequency={habit.frequency} />
-            <span className="text-sm text-gray-500">
-              {formatScheduleDays(habit.frequency, habit.scheduleDays)}
-            </span>
+      <div className="p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <Link href={`${ROUTES.HABITS}/${habit.id}`}>
+              <h3 className="text-lg font-bold text-gray-800 hover:text-indigo-600">
+                {habit.name}
+              </h3>
+            </Link>
+            <div className="mt-1 flex items-center gap-2">
+              <FrequencyBadge frequency={habit.frequency} />
+              {habit.frequency === 'WEEKLY' && habit.scheduleDays && (
+                <p className="text-xs text-gray-500">
+                  {formatScheduleDays(habit.scheduleDays)}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-        <div className={`text-sm font-medium ${momentumDisplay.color}`}>
-          {momentumDisplay.icon} {momentumDisplay.label}
+          <div className="flex items-center gap-2 text-sm">
+            <span className={momentumDisplay.textColor}>{momentumDisplay.icon}</span>
+            <span className="font-semibold text-gray-700">{momentumDisplay.text}</span>
+          </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      {/* Key Stats */}
+      <div className="grid grid-cols-2 gap-4 px-6 pb-6 border-b border-gray-100">
         <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <p className="text-xl font-bold text-gray-900">{performance.completionRate}%</p>
-          <p className="text-xs text-gray-500">Completion</p>
-        </div>
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <p className="text-xl font-bold text-gray-900">{performance.currentStreak}</p>
+          <p className="text-xl font-bold text-gray-900">{performance.streaks.currentStreak}</p>
           <p className="text-xs text-gray-500">Current Streak</p>
         </div>
         <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <p className="text-xl font-bold text-gray-900">{performance.longestStreak}</p>
+          <p className="text-xl font-bold text-gray-900">{performance.streaks.longestStreak}</p>
           <p className="text-xs text-gray-500">Longest Streak</p>
-        </div>
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <p className="text-xl font-bold text-green-600">{performance.completedEntries}</p>
-          <p className="text-xs text-gray-500">Completed</p>
-        </div>
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <p className="text-xl font-bold text-red-600">{performance.missedEntries}</p>
-          <p className="text-xs text-gray-500">Missed</p>
         </div>
       </div>
 
       {/* Rolling Averages */}
-      <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Rolling Averages</h4>
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-900">
-              {performance.rollingAverages.last7Days}%
-            </span>
-            <span className="text-xs text-gray-500">7 days</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-900">
-              {performance.rollingAverages.last14Days}%
-            </span>
-            <span className="text-xs text-gray-500">14 days</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-900">
-              {performance.rollingAverages.last30Days}%
-            </span>
-            <span className="text-xs text-gray-500">30 days</span>
-          </div>
+      <div className="px-6 pt-4 pb-2">
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Rolling Average</h4>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-bold text-indigo-600">
+            {performance.rollingAverage}%
+          </span>
+          <span className="text-xs text-gray-500">7-day completion</span>
         </div>
       </div>
 
       {/* Heatmap */}
-      {performance.heatmapData && performance.heatmapData.length > 0 && (
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Activity Heatmap</h4>
-          <Heatmap data={performance.heatmapData} />
+      {performance.heatmap && performance.heatmap.length > 0 && (
+        <div className="px-2 pt-2 pb-4">
+          <Heatmap data={performance.heatmap} />
         </div>
       )}
     </Card>
