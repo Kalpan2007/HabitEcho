@@ -2,8 +2,6 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTransition, useEffect, useState } from 'react';
-// import { useDebounce } from 'use-debounce'; // Removed
-// import { Input } from './Input'; // Removed, using native input
 
 export function HabitSearch() {
     const router = useRouter();
@@ -14,7 +12,12 @@ export function HabitSearch() {
     // Local state for immediate input feedback
     const [term, setTerm] = useState(searchParams.get('q') || '');
 
-    // Custom debounce logic since we might not have 'use-debounce'
+    // Sync term with URL when searchParams change externally (e.g., back button)
+    useEffect(() => {
+        setTerm(searchParams.get('q') || '');
+    }, [searchParams]);
+
+    // Custom debounce logic - only trigger on term changes
     useEffect(() => {
         const timer = setTimeout(() => {
             const params = new URLSearchParams(searchParams);
@@ -31,7 +34,8 @@ export function HabitSearch() {
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [term, router, pathname, searchParams]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [term]); // Only depend on term, not searchParams
 
     return (
         <div className="relative w-full max-w-sm">

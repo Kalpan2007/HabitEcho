@@ -35,12 +35,42 @@ export function HabitDetailsClient({ habitId }: { habitId: string }) {
         </div>;
     }
 
-    if (!habit || !performance) return <div>Habit not found</div>;
+    console.log('HabitDetailsClient Debug:', {
+        habitId,
+        isDetailLoading,
+        isPerfLoading,
+        hasDetailData: !!detailData,
+        hasPerformanceData: !!performanceData,
+        habit: detailData?.data?.habit,
+        performance: performanceData?.data?.performance,
+        detailError: (detailData as any)?.error, // Check if error mistakenly returned in data
+    });
+
+    if (!habit || !performance) {
+        return (
+            <div className="p-8 text-center text-gray-500">
+                <h2 className="text-xl font-semibold mb-2">Data Loading Error</h2>
+                <div className="text-sm text-left inline-block bg-gray-100 p-4 rounded mb-4">
+                    <p>Habit ID: {habitId}</p>
+                    <p className={habit ? "text-green-600" : "text-red-600"}>
+                        Habit Data: {habit ? "Loaded" : "Missing"}
+                    </p>
+                    <p className={performance ? "text-green-600" : "text-red-600"}>
+                        Performance Data: {performance ? "Loaded" : "Missing"}
+                    </p>
+                </div>
+                <br />
+                <Link href={ROUTES.DASHBOARD} className="text-indigo-600 hover:underline">
+                    Back to Dashboard
+                </Link>
+            </div>
+        );
+    }
 
     const momentumDisplay = getMomentumDisplay(performance.momentum.trend);
     const completionColor =
-        performance.completionRate >= 80 ? 'text-green-600' :
-            performance.completionRate >= 50 ? 'text-indigo-600' :
+        performance.rollingAverage >= 80 ? 'text-green-600' :
+            performance.rollingAverage >= 50 ? 'text-indigo-600' :
                 'text-gray-600';
 
     return (
@@ -75,7 +105,7 @@ export function HabitDetailsClient({ habitId }: { habitId: string }) {
                         <div className="flex flex-wrap gap-4 mt-8">
                             <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-full text-indigo-700 font-medium text-sm border border-indigo-100">
                                 <span className="text-xl">🔥</span>
-                                {performance.currentStreak} Day Streak
+                                {performance.streaks.currentStreak} Day Streak
                             </div>
                             <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm border ${performance.momentum.trend === 'UP' ? 'bg-green-50 text-green-700 border-green-100' :
                                 performance.momentum.trend === 'DOWN' ? 'bg-red-50 text-red-700 border-red-100' :
@@ -105,7 +135,7 @@ export function HabitDetailsClient({ habitId }: { habitId: string }) {
                                             className={`${completionColor} transition-all duration-1000 ease-out`}
                                             strokeWidth="8"
                                             strokeDasharray={251.2}
-                                            strokeDashoffset={251.2 - (251.2 * performance.completionRate) / 100}
+                                            strokeDashoffset={251.2 - (251.2 * performance.rollingAverage) / 100}
                                             strokeLinecap="round"
                                             stroke="currentColor"
                                             fill="transparent"
@@ -115,10 +145,10 @@ export function HabitDetailsClient({ habitId }: { habitId: string }) {
                                         />
                                     </svg>
                                     <span className={`absolute text-2xl font-bold ${completionColor}`}>
-                                        {performance.completionRate}%
+                                        {performance.rollingAverage}%
                                     </span>
                                 </div>
-                                <p className="mt-2 text-sm font-medium text-gray-500">Completion Rate</p>
+                                <p className="mt-2 text-sm font-medium text-gray-500">7-Day Consistency</p>
                             </div>
                         </div>
 
@@ -148,7 +178,7 @@ export function HabitDetailsClient({ habitId }: { habitId: string }) {
                             <span className="text-xs font-medium px-2 py-1 bg-gray-100 rounded-full text-gray-500">Last 30 Days</span>
                         </div>
                         <div className="p-6">
-                            <ActivityChart data={performance.heatmapData} />
+                            <ActivityChart data={performance.heatmap} />
                         </div>
                     </Card>
 
@@ -159,7 +189,7 @@ export function HabitDetailsClient({ habitId }: { habitId: string }) {
                             <span className="text-xs font-medium px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full">Rolling Average</span>
                         </div>
                         <div className="p-6">
-                            <TrendChart data={performance.heatmapData} />
+                            <TrendChart data={performance.heatmap} />
                         </div>
                     </Card>
                 </div>
@@ -170,36 +200,12 @@ export function HabitDetailsClient({ habitId }: { habitId: string }) {
                         <div className="p-6">
                             <h3 className="text-lg font-bold mb-1 opacity-90">Longest Streak</h3>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-5xl font-bold tracking-tighter">{performance.longestStreak}</span>
+                                <span className="text-5xl font-bold tracking-tighter">{performance.streaks.longestStreak}</span>
                                 <span className="text-lg font-medium opacity-75">days</span>
                             </div>
                             <p className="mt-4 text-sm opacity-80 leading-relaxed">
                                 Keep pushing! Consistency is the key to building lasting habits.
                             </p>
-                        </div>
-                    </Card>
-
-                    <Card className="border-none shadow-lg shadow-gray-100">
-                        <div className="px-6 py-4 border-b border-gray-50">
-                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Stats Overview</h3>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div className="flex justify-between items-center pb-4 border-b border-gray-50">
-                                <span className="text-gray-500">Total Entries</span>
-                                <span className="font-bold text-gray-900">{performance.totalEntries}</span>
-                            </div>
-                            <div className="flex justify-between items-center pb-4 border-b border-gray-50">
-                                <span className="text-gray-500">Completed</span>
-                                <span className="font-bold text-green-600">{performance.completedEntries}</span>
-                            </div>
-                            <div className="flex justify-between items-center pb-4 border-b border-gray-50">
-                                <span className="text-gray-500">Missed</span>
-                                <span className="font-bold text-red-500">{performance.missedEntries}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-500">Partials</span>
-                                <span className="font-bold text-yellow-600">{performance.partialEntries}</span>
-                            </div>
                         </div>
                     </Card>
                 </div>

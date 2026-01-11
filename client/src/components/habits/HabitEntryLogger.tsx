@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLogEntry } from '@/hooks/useEntries';
 import { useToast, Card } from '@/components/ui';
 import { getToday, cn, isDateScheduled } from '@/lib/utils';
@@ -21,12 +21,17 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry, frequency, 
 
     const [showPartialModal, setShowPartialModal] = useState(false);
     const [percentComplete, setPercentComplete] = useState(50);
+    const [entry, setEntry] = useState<HabitEntry | null>(initialEntry);
+
+    useEffect(() => {
+        setEntry(initialEntry);
+    }, [initialEntry]);
 
     const isScheduledToday = isDateScheduled(today, frequency, scheduleDays);
 
     const handleLog = (status: EntryStatus, percentage?: number) => {
         // 1. One-time update rule check
-        if (initialEntry) {
+        if (entry) {
             error('Access Denied', 'You cannot change the status once logged.');
             return;
         }
@@ -53,13 +58,17 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry, frequency, 
         const confirmed = window.confirm(message);
 
         if (!confirmed) return;
-
+        
         logEntry({
             status,
-            entryDate: today,
+            date: today,
             percentComplete: percentage
         }, {
-            onSuccess: () => {
+            onSuccess: (response) => {
+                const nextEntry = (response as any)?.data?.entry ?? (response as any)?.data?.log ?? null;
+                if (nextEntry) {
+                    setEntry(nextEntry as HabitEntry);
+                }
                 const text = status === 'DONE' ? 'Completed!' : status === 'PARTIAL' ? `Marked as ${percentage}% complete` : 'Marked as missed';
                 success('Status Updated', text);
                 setShowPartialModal(false);
@@ -70,11 +79,11 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry, frequency, 
         });
     };
 
-    const currentStatus = initialEntry?.status;
-    const isLocked = !!initialEntry;
+    const currentStatus = entry?.status;
+    const isLocked = !!entry;
 
     // If not scheduled today and no entry exists, look disabled/informational
-    const isDisabled = !isScheduledToday && !initialEntry;
+    const isDisabled = !isScheduledToday && !entry;
 
     return (
         <>
