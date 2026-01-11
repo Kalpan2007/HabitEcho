@@ -44,6 +44,7 @@ export async function createHabitLog(
             deletedAt: true,
             frequency: true,
             scheduleDays: true,
+            timezone: true,
         },
     });
 
@@ -55,14 +56,16 @@ export async function createHabitLog(
         throw new ForbiddenError('Access denied');
     }
 
-    const date = parseAndNormalizeDate(input.date);
+    // Use the habit's timezone when normalizing the YYYY-MM-DD date string
+    const date = parseAndNormalizeDate(input.date, (habit as any).timezone || 'UTC');
 
     // Validate that the date is allowed by the schedule
     const { isDateScheduled } = await import('../utils/date.js');
     const isScheduled = isDateScheduled(
         date,
         habit.frequency,
-        habit.scheduleDays as number[] | null
+        habit.scheduleDays as number[] | null,
+        (habit as any).timezone || 'UTC'
     );
 
     if (!isScheduled) {
@@ -120,7 +123,13 @@ export async function updateHabitLog(
     // Verify habit ownership
     await verifyHabitOwnership(userId, habitId);
 
-    const normalizedDate = parseAndNormalizeDate(date);
+    // Fetch timezone to normalize date consistently with creation
+    const habit = await (prisma as any).habit.findUnique({
+        where: { id: habitId },
+        select: { timezone: true },
+    });
+
+    const normalizedDate = parseAndNormalizeDate(date, (habit as any)?.timezone || 'UTC');
 
     const existingLog = await (prisma as any).habitLog.findUnique({
         where: {
@@ -185,19 +194,25 @@ export async function getHabitHistory(
     // Verify habit ownership
     await verifyHabitOwnership(userId, habitId);
 
+    // Fetch timezone for range parsing
+    const habit = await (prisma as any).habit.findUnique({
+        where: { id: habitId },
+        select: { timezone: true },
+    });
+
     const where: Record<string, unknown> = { habitId };
 
     if (options.startDate) {
         where.date = {
             ...(where.date as Record<string, unknown> || {}),
-            gte: parseAndNormalizeDate(options.startDate),
+            gte: parseAndNormalizeDate(options.startDate, (habit as any)?.timezone || 'UTC'),
         };
     }
 
     if (options.endDate) {
         where.date = {
             ...(where.date as Record<string, unknown> || {}),
-            lte: parseAndNormalizeDate(options.endDate),
+            lte: parseAndNormalizeDate(options.endDate, (habit as any)?.timezone || 'UTC'),
         };
     }
 
@@ -279,7 +294,13 @@ export async function deleteHabitLog(
     // Verify habit ownership
     await verifyHabitOwnership(userId, habitId);
 
-    const normalizedDate = parseAndNormalizeDate(date);
+    // Fetch timezone to normalize date consistently with creation
+    const habit = await (prisma as any).habit.findUnique({
+        where: { id: habitId },
+        select: { timezone: true },
+    });
+
+    const normalizedDate = parseAndNormalizeDate(date, (habit as any)?.timezone || 'UTC');
 
     const log = await (prisma as any).habitLog.findUnique({
         where: {

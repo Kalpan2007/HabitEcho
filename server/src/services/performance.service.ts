@@ -9,139 +9,84 @@ import type {
   EntryStatus,
 } from '../types/index.js';
 
-/**
- * Threshold for PARTIAL entries to count toward streaks.
- * A PARTIAL entry contributes to streak only if percentComplete >= this value.
- */
 const STREAK_THRESHOLD = 50;
 
-/**
- * Calculate completion rate from entries
- */
 function calculateCompletionRate(
   entries: Array<{ status: string; percentComplete: number | null }>,
   totalScheduledDays: number
 ): number {
-  if (totalScheduledDays === 0) return 0;
-
-  const completedCount = entries.reduce((sum: number, entry: any) => {
-    if (entry.status === 'DONE') return sum + 1;
-    if (entry.status === 'PARTIAL' && entry.percentComplete) {
-      return sum + entry.percentComplete / 100;
-    }
-    return sum;
+  const weightedSum = entries.reduce((sum, entry) => {
+    const weight = entry.percentComplete !== null ? entry.percentComplete / 100 : entry.status === 'DONE' ? 1 : 0;
+    return sum + weight;
   }, 0);
-
-  return Math.round((completedCount / totalScheduledDays) * 100);
+  return Math.round((weightedSum / Math.max(totalScheduledDays, 1)) * 100);
 }
 
-/**
- * Check if an entry counts toward streak based on status and percentComplete
- */
 function countsTowardStreak(status: string, percentComplete: number | null): boolean {
-  if (status === 'DONE') return true;
-  if (status === 'PARTIAL' && percentComplete !== null && percentComplete >= STREAK_THRESHOLD) {
-    return true;
-  }
-  return false;
+  return status === 'DONE' || (percentComplete !== null && percentComplete >= STREAK_THRESHOLD);
 }
 
-/**
- * Calculate streaks from sorted entries (oldest to newest)
- */
 function calculateStreaks(
   entries: Array<{ date: Date; status: string; percentComplete: number | null }>,
   scheduledDates: string[]
 ): StreakInfo {
-  if (scheduledDates.length === 0) {
-    return { current: 0, longest: 0, lastCompletedDate: null };
-  }
-
-  const entryMap = new Map(
-    entries.map((e: any) => [formatDate(e.date), e])
-  );
-
   let currentStreak = 0;
   let longestStreak = 0;
-  let tempStreak = 0;
-  let lastCompletedDate: string | null = null;
 
-  // Process from newest to oldest for current streak
-  const reversedDates = [...scheduledDates].reverse();
-  let streakBroken = false;
+  const dateSet = new Set(scheduledDates);
 
-  for (const date of reversedDates) {
-    const entry = entryMap.get(date);
+  for (const scheduled of scheduledDates) {
+    const entry = entries.find((e) => formatDate(e.date) === scheduled);
     if (entry && countsTowardStreak(entry.status, entry.percentComplete)) {
-      if (!streakBroken) {
-        currentStreak++;
-      }
-      if (!lastCompletedDate) {
-        lastCompletedDate = date;
-      }
+      currentStreak += 1;
+      longestStreak = Math.max(longestStreak, currentStreak);
     } else {
-      streakBroken = true;
+      currentStreak = 0;
     }
   }
 
-  // Process from oldest to newest for longest streak
-  for (const date of scheduledDates) {
-    const entry = entryMap.get(date);
-    if (entry && countsTowardStreak(entry.status, entry.percentComplete)) {
-      tempStreak++;
-      longestStreak = Math.max(longestStreak, tempStreak);
-    } else {
-      tempStreak = 0;
-    }
-  }
-
-  return { current: 0, longest: longestStreak, lastCompletedDate };
+  return { currentStreak, longestStreak };
 }
 
-/**
- * Calculate rolling average for a specific number of days
- */
 async function calculateRollingAverage(
   habitId: string,
   days: number,
   timezone: string
 ): Promise<number> {
-  const { start, end } = getDateRange(days, timezone);
+  const end = dayjs().tz(timezone).endOf('day');
+  const start = end.subtract(days - 1, 'day').startOf('day');
 
-  const entries = await (prisma as any).habitLog.findMany({
+  const logs = await prisma.habitLog.findMany({
     where: {
       habitId,
-      date: { gte: start, lte: end },
+      date: {
+        gte: start.toDate(),
+        lte: end.toDate(),
+      },
     },
+    orderBy: { date: 'asc' },
+    select: { status: true, percentComplete: true, date: true },
   });
 
-  if (entries.length === 0) return 0;
+  const scheduledDates = generateDateRange(start.toDate(), end.toDate());
+  const entries = logs.map((l) => ({ status: l.status, percentComplete: l.percentComplete }));
 
-  const total = entries.reduce((sum: number, entry: any) => {
-    if (entry.status === 'DONE') return sum + 100;
-    if (entry.status === 'PARTIAL') return sum + (entry.percentComplete || 50);
-    return sum;
-  }, 0);
-
-  return Math.round(total / days);
+  return calculateCompletionRate(entries, scheduledDates.length);
 }
 
-/**
- * Get overall performance summary for a user
- */
 export async function getPerformanceSummary(userId: string): Promise<PerformanceSummary> {
   const timezone = await getUserTimezone(userId);
   const today = dayjs().tz(timezone).startOf('day');
 
-  // Get user's habits (excluding soft-deleted)
-  const habits = await (prisma as any).habit.findMany({
-    where: { userId, deletedAt: null },
+  const habits = await prisma.habit.findMany({
+    where: { userId },
     select: {
       id: true,
       name: true,
       isActive: true,
       frequency: true,
       scheduleDays: true,
+      timezone: true,
       logs: {
         where: {
           date: { gte: today.subtract(30, 'day').toDate() },
@@ -156,12 +101,12 @@ export async function getPerformanceSummary(userId: string): Promise<Performance
   });
 
   const activeHabits = habits.filter((h: any) => h.isActive);
-  const todayStr = formatDate(today);
-
+  // Format the user's "today" in their timezone and normalize to Date for exact match
+  const todayStr = today.format('YYYY-MM-DD');
   const { parseAndNormalizeDate } = await import('../utils/date.js');
-  const normalizedToday = parseAndNormalizeDate(todayStr);
+  const normalizedToday = parseAndNormalizeDate(todayStr, timezone);
 
-  const todayEntries = await (prisma as any).habitLog.findMany({
+  const todayEntries = await prisma.habitLog.findMany({
     where: {
       habit: { userId, deletedAt: null },
       date: normalizedToday,
@@ -173,7 +118,12 @@ export async function getPerformanceSummary(userId: string): Promise<Performance
   });
 
   const todayScheduledHabits = activeHabits.filter((habit: any) =>
-    isDateScheduled(normalizedToday, habit.frequency, habit.scheduleDays as number[] | null)
+    isDateScheduled(
+      normalizedToday,
+      habit.frequency,
+      habit.scheduleDays as number[] | null,
+      habit.timezone || timezone
+    )
   );
 
   const todayCompleted = todayEntries.filter((e: any) => e.status === 'DONE').length;
@@ -201,12 +151,9 @@ export async function getPerformanceSummary(userId: string): Promise<Performance
     longestStreak,
     todayCompletion: {
       completed: todayCompleted,
-      total: todayScheduledHabits.length,
-      percentage: todayScheduledHabits.length > 0
-        ? Math.round((todayCompleted / todayScheduledHabits.length) * 100)
-        : 0,
+      scheduled: todayScheduledHabits.length,
     },
-    rollingAverages: {
+    rollingAverage: {
       last7Days,
       last14Days,
       last30Days,
@@ -215,125 +162,56 @@ export async function getPerformanceSummary(userId: string): Promise<Performance
   };
 }
 
-/**
- * Calculate rolling average for all user's habits
- */
 async function calculateUserRollingAverage(
   userId: string,
   days: number,
   timezone: string
 ): Promise<number> {
-  const { start, end } = getDateRange(days, timezone);
+  const end = dayjs().tz(timezone).endOf('day');
+  const start = end.subtract(days - 1, 'day').startOf('day');
 
-  const entries = await (prisma as any).habitLog.findMany({
+  const logs = await prisma.habitLog.findMany({
     where: {
-      habit: { userId, deletedAt: null },
-      date: { gte: start, lte: end },
+      habit: { userId },
+      date: {
+        gte: start.toDate(),
+        lte: end.toDate(),
+      },
     },
-    select: {
-      status: true,
-      percentComplete: true,
-    },
+    orderBy: { date: 'asc' },
+    select: { status: true, percentComplete: true, date: true },
   });
 
-  if (entries.length === 0) return 0;
+  const scheduledDates = generateDateRange(start.toDate(), end.toDate());
+  const entries = logs.map((l) => ({ status: l.status, percentComplete: l.percentComplete }));
 
-  const total = entries.reduce((sum: number, entry: any) => {
-    if (entry.status === 'DONE') return sum + 100;
-    if (entry.status === 'PARTIAL') return sum + (entry.percentComplete || 50);
-    return sum;
-  }, 0);
-
-  return Math.round(total / entries.length);
+  return calculateCompletionRate(entries, scheduledDates.length);
 }
 
-/**
- * Calculate user-level streaks
- */
 async function calculateUserStreaks(
   userId: string,
   timezone: string
 ): Promise<{ currentStreak: number; longestStreak: number }> {
-  const { start } = getDateRange(365, timezone);
-  const end = dayjs().tz(timezone).startOf('day').toDate();
+  const end = dayjs().tz(timezone).endOf('day');
+  const start = end.subtract(180, 'day').startOf('day');
 
-  const habits = await (prisma as any).habit.findMany({
-    where: { userId, isActive: true, deletedAt: null },
-    select: {
-      id: true,
-      frequency: true,
-      scheduleDays: true,
-      logs: {
-        where: { date: { gte: start, lte: end } },
-        select: {
-          date: true,
-          status: true,
-          percentComplete: true,
-        },
-        orderBy: { date: 'asc' },
+  const logs = await prisma.habitLog.findMany({
+    where: {
+      habit: { userId },
+      date: {
+        gte: start.toDate(),
+        lte: end.toDate(),
       },
     },
+    orderBy: { date: 'asc' },
+    select: { status: true, percentComplete: true, date: true },
   });
 
-  if (habits.length === 0) {
-    return { currentStreak: 0, longestStreak: 0 };
-  }
-
-  const dateMap = new Map<string, { completed: number; scheduled: number }>();
-  const allDates = generateDateRange(start, end);
-
-  for (const date of allDates) {
-    const d = new Date(date);
-    let scheduled = 0;
-    let completed = 0;
-
-    for (const habit of habits) {
-      if (isDateScheduled(d, habit.frequency, habit.scheduleDays as number[] | null)) {
-        scheduled++;
-        const entry = (habit as any).logs.find((e: any) => formatDate(e.date) === date);
-        if (entry && (entry.status === 'DONE' || entry.status === 'PARTIAL')) {
-          completed++;
-        }
-      }
-    }
-
-    if (scheduled > 0) {
-      dateMap.set(date, { completed, scheduled });
-    }
-  }
-
-  let currentStreak = 0;
-  let longestStreak = 0;
-  let tempStreak = 0;
-
-  const sortedDates = Array.from(dateMap.keys()).sort();
-  const reversedDates = [...sortedDates].reverse();
-
-  for (const date of reversedDates) {
-    const data = dateMap.get(date);
-    if (data && data.completed >= data.scheduled * 0.5) {
-      currentStreak++;
-    } else {
-      break;
-    }
-  }
-
-  for (const date of sortedDates) {
-    const data = dateMap.get(date);
-    if (data && data.completed >= data.scheduled * 0.5) {
-      tempStreak++;
-      longestStreak = Math.max(longestStreak, tempStreak);
-    } else {
-      tempStreak = 0;
-    }
-  }
-
-  return { currentStreak, longestStreak };
+  const scheduledDates = generateDateRange(start.toDate(), end.toDate());
+  const streaks = calculateStreaks(logs, scheduledDates);
+  return streaks;
 }
 
-/**
- * Calculate momentum (trend comparison)
- */
 async function calculateMomentum(
   userId: string,
   timezone: string
@@ -343,167 +221,94 @@ async function calculateMomentum(
   trend: 'UP' | 'DOWN' | 'STABLE';
   percentageChange: number;
 }> {
-  const today = dayjs().tz(timezone).startOf('day');
+  const end = dayjs().tz(timezone).endOf('day');
+  const start = end.subtract(30, 'day').startOf('day');
 
-  const currentStart = today.subtract(6, 'day').toDate();
-  const currentEnd = today.toDate();
-
-  const previousStart = today.subtract(13, 'day').toDate();
-  const previousEnd = today.subtract(7, 'day').toDate();
-
-  const [currentEntries, previousEntries] = await Promise.all([
-    (prisma as any).habitLog.findMany({
-      where: {
-        habit: { userId, deletedAt: null },
-        date: { gte: currentStart, lte: currentEnd },
+  const logs = await prisma.habitLog.findMany({
+    where: {
+      habit: { userId },
+      date: {
+        gte: start.toDate(),
+        lte: end.toDate(),
       },
-    }),
-    (prisma as any).habitLog.findMany({
-      where: {
-        habit: { userId, deletedAt: null },
-        date: { gte: previousStart, lte: previousEnd },
-      },
-    }),
-  ]);
+    },
+    orderBy: { date: 'asc' },
+    select: { status: true, percentComplete: true, date: true, habitId: true },
+  });
 
-  const calculateAvg = (entries: any[]): number => {
-    if (entries.length === 0) return 0;
-    const total = entries.reduce((sum, e) => {
-      if (e.status === 'DONE') return sum + 100;
-      if (e.status === 'PARTIAL') return sum + (e.percentComplete || 50);
-      return sum;
-    }, 0);
-    return Math.round(total / entries.length);
-  };
+  const last7End = dayjs().tz(timezone).endOf('day');
+  const last7Start = last7End.subtract(6, 'day').startOf('day');
+  const last7Dates = generateDateRange(last7Start.toDate(), last7End.toDate());
 
-  const current = calculateAvg(currentEntries);
-  const previous = calculateAvg(previousEntries);
-
-  let trend: 'UP' | 'DOWN' | 'STABLE' = 'STABLE';
-  let percentageChange = 0;
-
-  if (previous > 0) {
-    percentageChange = Math.round(((current - previous) / previous) * 100);
-    if (percentageChange > 5) trend = 'UP';
-    else if (percentageChange < -5) trend = 'DOWN';
-  } else if (current > 0) {
-    trend = 'UP';
-    percentageChange = 100;
+  const recentEntriesByHabit = new Map<string, Array<{ status: string; percentComplete: number | null }>>();
+  for (const log of logs) {
+    const key = log.habitId;
+    const arr = recentEntriesByHabit.get(key) || [];
+    arr.push({ status: log.status, percentComplete: log.percentComplete });
+    recentEntriesByHabit.set(key, arr);
   }
+
+  let current = 0;
+  let previous = 0;
+
+  for (const [habitId, entries] of recentEntriesByHabit.entries()) {
+    const habitCurrent = calculateCompletionRate(entries.slice(-7), last7Dates.length);
+    const habitPrevious = calculateCompletionRate(entries.slice(-14, -7), last7Dates.length);
+    current += habitCurrent;
+    previous += habitPrevious;
+  }
+
+  const trend: 'UP' | 'DOWN' | 'STABLE' = current > previous ? 'UP' : current < previous ? 'DOWN' : 'STABLE';
+  const percentageChange = previous === 0 ? (current > 0 ? 100 : 0) : Math.round(((current - previous) / previous) * 100);
 
   return { current, previous, trend, percentageChange };
 }
 
-/**
- * Get detailed performance for a specific habit
- */
 export async function getHabitPerformance(
   userId: string,
   habitId: string
 ): Promise<HabitPerformance> {
-  const timezone = await getUserTimezone(userId);
-
-  const habit = await (prisma as any).habit.findFirst({
-    where: { id: habitId, userId, deletedAt: null },
+  const habit = await prisma.habit.findUnique({
+    where: { id: habitId },
+    select: {
+      id: true,
+      userId: true,
+      name: true,
+      frequency: true,
+      scheduleDays: true,
+      timezone: true,
+      deletedAt: true,
+      logs: {
+        orderBy: { date: 'asc' },
+        select: { date: true, status: true, percentComplete: true },
+      },
+    },
   });
 
-  if (!habit) {
-    throw new Error('Habit not found');
+  if (!habit || habit.deletedAt !== null || habit.userId !== userId) {
+    throw new Error('Habit not found or access denied');
   }
 
-  const entries = await (prisma as any).habitLog.findMany({
-    where: { habitId },
-    orderBy: { date: 'asc' },
-  });
+  const timezone = habit.timezone;
+  const entries = habit.logs.map((l: any) => ({ date: l.date, status: l.status, percentComplete: l.percentComplete }));
 
-  const today = dayjs().tz(timezone).startOf('day');
-  const startDate = dayjs(habit.startDate);
-  const endDate = habit.endDate ? dayjs(habit.endDate) : today;
-  const effectiveEnd = endDate.isBefore(today) ? endDate : today;
+  const start = dayjs(entries[0]?.date).tz(timezone).startOf('day');
+  const end = dayjs(entries[entries.length - 1]?.date).tz(timezone).endOf('day');
+  const scheduledDates = generateDateRange(start.toDate(), end.toDate());
 
-  const allDates = generateDateRange(startDate.toDate(), effectiveEnd.toDate());
-  const scheduledDates = allDates.filter(date =>
-    isDateScheduled(new Date(date), habit.frequency, (habit as any).scheduleDays as number[] | null)
-  );
-
-  const completedEntries = entries.filter((e: any) => e.status === 'DONE').length;
-  const partialEntries = entries.filter((e: any) => e.status === 'PARTIAL').length;
-  const missedEntries = Math.max(0, scheduledDates.length - entries.length);
-
-  const completionRate = calculateCompletionRate(
-    entries.map((e: any) => ({ status: e.status, percentComplete: e.percentComplete })),
-    scheduledDates.length
-  );
-
-  const streaks = calculateStreaks(entries, scheduledDates);
-
-  const entryDateStrings = new Set(entries.map((e: any) => dayjs(e.date).tz(timezone).format('YYYY-MM-DD')));
-  const missingDates = scheduledDates
-    .map(d => dayjs(d).tz(timezone).format('YYYY-MM-DD'))
-    .filter(dateStr => !entryDateStrings.has(dateStr));
-
-  const [last7Days, last14Days, last30Days] = await Promise.all([
-    calculateRollingAverage(habitId, 7, timezone),
-    calculateRollingAverage(habitId, 14, timezone),
-    calculateRollingAverage(habitId, 30, timezone),
-  ]);
-
-  const heatmapStart = today.subtract(364, 'day');
-  const heatmapDates = generateDateRange(heatmapStart.toDate(), today.toDate());
-
-  const entryMap = new Map(
-    entries.map((e: any) => [formatDate(e.date), e])
-  );
-
-  const heatmapData: HeatmapEntry[] = heatmapDates.map(date => {
-    const entry = entryMap.get(date) as any;
-    const isScheduled = isDateScheduled(
-      new Date(date),
-      habit.frequency,
-      (habit as any).scheduleDays as number[] | null
-    );
-
-    if (!isScheduled) {
-      return { date, value: -1, status: null };
-    }
-
-    if (!entry) {
-      return { date, value: 0, status: null };
-    }
-
-    return {
-      date,
-      value: entry.status === 'DONE' ? 100 : (entry.percentComplete || 0),
-      status: entry.status as EntryStatus,
-    };
-  });
-
+  const rollingAverage = await calculateRollingAverage(habitId, 7, timezone);
   const momentum = await calculateHabitMomentum(habitId, timezone);
 
   return {
     habitId,
-    habitName: habit.name,
-    completionRate,
-    currentStreak: streaks.current,
-    longestStreak: streaks.longest,
-    totalEntries: entries.length,
-    completedEntries,
-    partialEntries,
-    missedEntries,
-    rollingAverages: {
-      last7Days,
-      last14Days,
-      last30Days,
-    },
-    heatmapData,
-    missingDates,
+    name: habit.name,
+    rollingAverage,
     momentum,
+    streaks: calculateStreaks(entries, scheduledDates),
+    heatmap: entries.map((e) => ({ date: formatDate(e.date), status: e.status as EntryStatus })),
   };
 }
 
-/**
- * Calculate momentum for a specific habit
- */
 async function calculateHabitMomentum(
   habitId: string,
   timezone: string
@@ -513,52 +318,31 @@ async function calculateHabitMomentum(
   trend: 'UP' | 'DOWN' | 'STABLE';
   percentageChange: number;
 }> {
-  const today = dayjs().tz(timezone).startOf('day');
+  const end = dayjs().tz(timezone).endOf('day');
+  const start = end.subtract(14, 'day').startOf('day');
 
-  const currentStart = today.subtract(6, 'day').toDate();
-  const currentEnd = today.toDate();
-  const previousStart = today.subtract(13, 'day').toDate();
-  const previousEnd = today.subtract(7, 'day').toDate();
-
-  const [currentEntries, previousEntries] = await Promise.all([
-    (prisma as any).habitLog.findMany({
-      where: {
-        habitId,
-        date: { gte: currentStart, lte: currentEnd },
+  const logs = await prisma.habitLog.findMany({
+    where: {
+      habitId,
+      date: {
+        gte: start.toDate(),
+        lte: end.toDate(),
       },
-    }),
-    (prisma as any).habitLog.findMany({
-      where: {
-        habitId,
-        date: { gte: previousStart, lte: previousEnd },
-      },
-    }),
-  ]);
+    },
+    orderBy: { date: 'asc' },
+    select: { status: true, percentComplete: true, date: true },
+  });
 
-  const calculateAvg = (entries: any[]): number => {
-    if (entries.length === 0) return 0;
-    const total = entries.reduce((sum, e) => {
-      if (e.status === 'DONE') return sum + 100;
-      if (e.status === 'PARTIAL') return sum + (e.percentComplete || 50);
-      return sum;
-    }, 0);
-    return Math.round(total / entries.length);
-  };
+  const last7End = dayjs().tz(timezone).endOf('day');
+  const last7Start = last7End.subtract(6, 'day').startOf('day');
+  const last7Dates = generateDateRange(last7Start.toDate(), last7End.toDate());
 
-  const current = calculateAvg(currentEntries);
-  const previous = calculateAvg(previousEntries);
+  const entries = logs.map((l) => ({ status: l.status, percentComplete: l.percentComplete }));
+  const current = calculateCompletionRate(entries.slice(-7), last7Dates.length);
+  const previous = calculateCompletionRate(entries.slice(-14, -7), last7Dates.length);
 
-  let trend: 'UP' | 'DOWN' | 'STABLE' = 'STABLE';
-  let percentageChange = 0;
-
-  if (previous > 0) {
-    percentageChange = Math.round(((current - previous) / previous) * 100);
-    if (percentageChange > 5) trend = 'UP';
-    else if (percentageChange < -5) trend = 'DOWN';
-  } else if (current > 0) {
-    trend = 'UP';
-    percentageChange = 100;
-  }
+  const trend: 'UP' | 'DOWN' | 'STABLE' = current > previous ? 'UP' : current < previous ? 'DOWN' : 'STABLE';
+  const percentageChange = previous === 0 ? (current > 0 ? 100 : 0) : Math.round(((current - previous) / previous) * 100);
 
   return { current, previous, trend, percentageChange };
 }

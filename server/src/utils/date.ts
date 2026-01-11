@@ -25,10 +25,10 @@ export function getTodayInTimezone(tz: string = 'UTC'): Dayjs {
  * Parse a date string and normalize to start of day in UTC
  */
 export function parseAndNormalizeDate(dateString: string, tz: string = 'UTC'): Date {
-  // If the date string is in YYYY-MM-DD format, parse it strictly as UTC
-  // This prevents the server's local timezone from shifting the date
+  // If the date string is in YYYY-MM-DD format, interpret it in the provided timezone
+  // Then normalize to UTC start-of-day to store consistently
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-    return dayjs.utc(dateString).startOf('day').toDate();
+    return dayjs.tz(dateString, tz).startOf('day').utc().toDate();
   }
 
   return dayjs(dateString).tz(tz).startOf('day').utc().toDate();
@@ -77,10 +77,11 @@ export function generateDateRange(start: Date, end: Date): string[] {
 export function isDateScheduled(
   date: Date | Dayjs,
   frequency: string,
-  scheduleDays: number[] | null
+  scheduleDays: number[] | null,
+  timezone: string = 'UTC'
 ): boolean {
-  // Use UTC to check day of week/month correctly for stored UTC dates
-  const d = dayjs(date).utc();
+  // Evaluate the date in the habit's timezone so weekday/month checks align with the user expectation
+  const d = dayjs(date).tz(timezone);
 
   switch (frequency) {
     case 'DAILY':

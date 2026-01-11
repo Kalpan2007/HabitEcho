@@ -54,6 +54,8 @@ export async function createHabit(
     select: { timezone: true }
   });
 
+  const tz = input.timezone || user?.timezone || 'UTC';
+
   const habit = await prisma.habit.create({
     data: {
       userId,
@@ -61,11 +63,11 @@ export async function createHabit(
       description: input.description,
       frequency: input.frequency,
       scheduleDays: input.scheduleDays ?? undefined,
-      startDate: parseAndNormalizeDate(input.startDate),
-      endDate: input.endDate ? parseAndNormalizeDate(input.endDate) : null,
+      startDate: parseAndNormalizeDate(input.startDate, tz),
+      endDate: input.endDate ? parseAndNormalizeDate(input.endDate, tz) : null,
       isActive: true,
       reminderTime: input.reminderTime ?? null,
-      timezone: input.timezone || user?.timezone || 'UTC',
+      timezone: tz,
     },
   });
 
@@ -173,14 +175,15 @@ export async function updateHabit(
 
   // Prepare update data
   const updateData: Record<string, unknown> = {};
+  const tz = input.timezone || (existingHabit as any).timezone || 'UTC';
 
   if (input.name !== undefined) updateData.name = input.name;
   if (input.description !== undefined) updateData.description = input.description;
   if (input.frequency !== undefined) updateData.frequency = input.frequency;
   if (input.scheduleDays !== undefined) updateData.scheduleDays = input.scheduleDays;
-  if (input.startDate !== undefined) updateData.startDate = parseAndNormalizeDate(input.startDate);
+  if (input.startDate !== undefined) updateData.startDate = parseAndNormalizeDate(input.startDate, tz);
   if (input.endDate !== undefined) {
-    updateData.endDate = input.endDate ? parseAndNormalizeDate(input.endDate) : null;
+    updateData.endDate = input.endDate ? parseAndNormalizeDate(input.endDate, tz) : null;
   }
   if (input.isActive !== undefined) updateData.isActive = input.isActive;
   if (input.reminderTime !== undefined) updateData.reminderTime = input.reminderTime;
