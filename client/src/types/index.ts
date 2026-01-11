@@ -86,7 +86,7 @@ export interface HabitEntry {
 }
 
 export interface CreateEntryInput {
-  entryDate: string;
+  date: string; // Changed from entryDate to match backend validation
   status: EntryStatus;
   percentComplete?: number;
   reason?: string;
@@ -103,6 +103,11 @@ export interface UpdateEntryInput {
 // ============================================
 // PERFORMANCE TYPES
 // ============================================
+
+export interface TodayCompletion {
+  completed: number;
+  scheduled: number;
+}
 
 export interface RollingAverages {
   last7Days: number;
@@ -130,30 +135,28 @@ export interface PerformanceSummary {
   currentStreak: number;
   longestStreak: number;
   todayCompletion: TodayCompletion;
-  rollingAverages: RollingAverages;
+  rollingAverage: RollingAverages;
   momentum: Momentum;
 }
 
 export interface HeatmapDataPoint {
   date: string;
-  value: number;
-  status: EntryStatus | null;
+  status: EntryStatus;
+  value?: number;
+}
+
+export interface StreakInfo {
+  currentStreak: number;
+  longestStreak: number;
 }
 
 export interface HabitPerformance {
   habitId: string;
-  habitName: string;
-  completionRate: number;
-  currentStreak: number;
-  longestStreak: number;
-  totalEntries: number;
-  completedEntries: number;
-  partialEntries: number;
-  missedEntries: number;
-  rollingAverages: RollingAverages;
-  heatmapData: HeatmapDataPoint[];
-  missingDates: string[]; // Added: List of historical scheduled dates with no entry
+  name: string;
+  rollingAverage: number;
   momentum: Momentum;
+  streaks: StreakInfo;
+  heatmap: HeatmapDataPoint[];
 }
 
 // ============================================

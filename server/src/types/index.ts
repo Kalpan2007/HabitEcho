@@ -180,10 +180,9 @@ export interface PerformanceSummary {
   longestStreak: number;
   todayCompletion: {
     completed: number;
-    total: number;
-    percentage: number;
+    scheduled: number;
   };
-  rollingAverages: {
+  rollingAverage: {
     last7Days: number;
     last14Days: number;
     last30Days: number;
@@ -198,37 +197,41 @@ export interface PerformanceSummary {
 
 export interface HabitPerformance {
   habitId: string;
-  habitName: string;
-  completionRate: number;
-  currentStreak: number;
-  longestStreak: number;
-  totalEntries: number;
-  completedEntries: number;
-  partialEntries: number;
-  missedEntries: number;
-  rollingAverages: {
-    last7Days: number;
-    last14Days: number;
-    last30Days: number;
-  };
-  heatmapData: HeatmapEntry[];
-  missingDates: string[]; // List of historical scheduled dates with no entry
+  name: string;
+  rollingAverage: number;
   momentum: {
     current: number;
     previous: number;
     trend: 'UP' | 'DOWN' | 'STABLE';
     percentageChange: number;
   };
+  streaks: StreakInfo;
+  heatmap: { date: string; status: EntryStatus }[];
 }
 
 export interface HeatmapEntry {
   date: string;
-  value: number; // 0-100 or completion status
+  value: number;
   status: EntryStatus | null;
 }
 
 export interface StreakInfo {
-  current: number;
-  longest: number;
-  lastCompletedDate: string | null;
+  currentStreak: number;
+  longestStreak: number;
+}
+
+export type EntryStatus = 'DONE' | 'PARTIAL' | 'MISSED' | 'SKIPPED';
+
+export interface HabitLogEntry {
+  id: string;
+  habitId: string;
+  date: Date;
+  status: EntryStatus;
+  completed: boolean;
+  percentComplete: number | null;
+  reason: string | null;
+  notes: string | null;
+  reminderSent: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
