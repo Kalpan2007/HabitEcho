@@ -155,7 +155,7 @@ export function generateMetadata({
       type: SEO_CONFIG.openGraph.type,
       images: image 
         ? [{ url: image, width: 1200, height: 630, alt: title }]
-        : SEO_CONFIG.openGraph.images,
+        : [...SEO_CONFIG.openGraph.images],
     },
     twitter: {
       card: SEO_CONFIG.twitter.card,
@@ -163,7 +163,7 @@ export function generateMetadata({
       creator: SEO_CONFIG.twitter.creator,
       title: fullTitle,
       description,
-      images: image ? [image] : SEO_CONFIG.openGraph.images.map(img => img.url),
+      images: image ? [image] : [...SEO_CONFIG.openGraph.images.map(img => img.url)],
     },
   };
 }
