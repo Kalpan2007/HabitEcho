@@ -4,6 +4,12 @@ import { devDelay } from '@/lib/dev-delay';
 import { QUERY_KEYS } from '@/lib/query-keys';
 import type { Habit, CreateHabitInput, UpdateHabitInput } from '@/types';
 
+// Add a predicate to target all history queries for a given habitId
+const historyPredicate = (habitId: string) => (query: { queryKey: unknown }) => {
+    const key = query.queryKey as unknown[];
+    return Array.isArray(key) && key[0] === 'habits' && key[1] === 'history' && key[2] === habitId;
+};
+
 export function useHabits(options?: { isActive?: boolean; limit?: number; page?: number; initialData?: Habit[] }) {
     const { initialData, ...queryOptions } = options || {};
     return useQuery({
@@ -42,9 +48,15 @@ export function useCreateHabit() {
             await devDelay(1000);
             return habitsApi.create(input);
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.all });
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.performance.summary });
+        onSuccess: async (response) => {
+            const newHabitId = response?.data?.habit?.id;
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.all }),
+                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.performance.summary }),
+                newHabitId ? queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.detail(newHabitId) }) : Promise.resolve(),
+                newHabitId ? queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.performance(newHabitId) }) : Promise.resolve(),
+                newHabitId ? queryClient.invalidateQueries({ predicate: historyPredicate(newHabitId) }) : Promise.resolve(),
+            ]);
         },
     });
 }
@@ -58,10 +70,14 @@ export function useUpdateHabit(id: string) {
             await devDelay(1000);
             return habitsApi.update(id, input);
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.all });
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.detail(id) });
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.performance(id) });
+        onSuccess: async () => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.all }),
+                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.detail(id) }),
+                queryClient.invalidateQueries({ predicate: historyPredicate(id) }),
+                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.performance(id) }),
+                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.performance.summary }),
+            ]);
         },
     });
 }
@@ -75,9 +91,14 @@ export function useDeleteHabit() {
             await devDelay(1000);
             return habitsApi.delete(id);
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.all });
-            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.performance.summary });
+        onSuccess: async (_response, id) => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.all }),
+                queryClient.invalidateQueries({ queryKey: QUERY_KEYS.performance.summary }),
+                id ? queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.detail(id) }) : Promise.resolve(),
+                id ? queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits.performance(id) }) : Promise.resolve(),
+                id ? queryClient.invalidateQueries({ predicate: historyPredicate(id) }) : Promise.resolve(),
+            ]);
         },
     });
 }
