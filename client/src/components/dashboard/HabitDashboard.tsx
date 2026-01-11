@@ -162,7 +162,7 @@ export function HabitDashboard() {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {habits.map((habit) => (
+                        {habits.map((habit: Habit) => (
                             <HabitItem key={habit.id} habit={habit} />
                         ))}
                     </div>
@@ -175,15 +175,15 @@ export function HabitDashboard() {
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Rolling Averages</h2>
                     <div className="grid grid-cols-3 gap-4">
                         <div className="text-center p-4 bg-gray-50 rounded-lg">
-                            <p className="text-2xl font-bold text-gray-900">{summary.rollingAverages.last7Days}%</p>
+                            <p className="text-2xl font-bold text-gray-900">{summary.rollingAverage.last7Days}%</p>
                             <p className="text-sm text-gray-500">Last 7 days</p>
                         </div>
                         <div className="text-center p-4 bg-gray-50 rounded-lg">
-                            <p className="text-2xl font-bold text-gray-900">{summary.rollingAverages.last14Days}%</p>
+                            <p className="text-2xl font-bold text-gray-900">{summary.rollingAverage.last14Days}%</p>
                             <p className="text-sm text-gray-500">Last 14 days</p>
                         </div>
                         <div className="text-center p-4 bg-gray-50 rounded-lg">
-                            <p className="text-2xl font-bold text-gray-900">{summary.rollingAverages.last30Days}%</p>
+                            <p className="text-2xl font-bold text-gray-900">{summary.rollingAverage.last30Days}%</p>
                             <p className="text-sm text-gray-500">Last 30 days</p>
                         </div>
                     </div>
