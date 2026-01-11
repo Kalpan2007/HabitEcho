@@ -90,9 +90,10 @@ async function main() {
 
         console.log(`Hb Created habit: ${habit.name}`);
 
-        // Generate 90 days of history
+        // Generate 90 days of history - starting from YESTERDAY (not today)
+        // This leaves today open for users to log their entries
         const entries = [];
-        for (let i = 0; i < 90; i++) {
+        for (let i = 1; i <= 90; i++) {  // Start from 1 (yesterday) instead of 0 (today)
             const date = new Date(today);
             date.setDate(date.getDate() - i);
 
