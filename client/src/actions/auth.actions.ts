@@ -5,6 +5,16 @@ import { redirect } from 'next/navigation';
 import { API_BASE_URL, ROUTES } from '@/lib/constants';
 import type { FormState, SignupInput, LoginInput } from '@/types';
 
+// Helper to check if an error is a Next.js redirect
+function isRedirectError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    'digest' in error &&
+    typeof (error as { digest?: string }).digest === 'string' &&
+    (error as { digest: string }).digest.startsWith('NEXT_REDIRECT')
+  );
+}
+
 // ============================================
 // HELPER: Make authenticated API request
 // ============================================
@@ -26,6 +36,17 @@ async function apiRequest<T>(
         ...options.headers,
       },
     });
+
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('[API] Non-JSON response:', text.substring(0, 200));
+      return {
+        success: false,
+        message: 'Server returned an invalid response. Please ensure the backend is running.',
+      };
+    }
 
     const data = await response.json();
 
@@ -106,30 +127,49 @@ export async function signupAction(
   }
 
   // Make signup request
-  const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(input),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    });
 
-  const data = await response.json();
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('[Signup] Non-JSON response:', text.substring(0, 200));
+      return {
+        success: false,
+        message: 'Unable to connect to server. Please ensure the backend is running on ' + API_BASE_URL,
+      };
+    }
 
-  if (!response.ok) {
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || 'An error occurred during signup',
+        errors: data.error?.details as Record<string, string[]> | undefined,
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Verification code sent to your email. Please check your inbox.',
+      data: { email: input.email },
+    };
+  } catch (error) {
+    console.error('[Signup] Network error:', error);
     return {
       success: false,
-      message: data.message || 'An error occurred during signup',
-      errors: data.error?.details as Record<string, string[]> | undefined,
+      message: 'Network error. Please check your connection and ensure the backend is running.',
     };
   }
-
-  return {
-    success: true,
-    message: 'Verification code sent to your email. Please check your inbox.',
-    data: { email: input.email },
-  };
 }
 
 /**
@@ -149,16 +189,27 @@ export async function verifyOtpAction(
     };
   }
 
-  const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, otp }),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, otp }),
+    });
 
-  const data = await response.json();
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('[VerifyOTP] Non-JSON response');
+      return {
+        success: false,
+        message: 'Unable to connect to server. Please ensure the backend is running.',
+      };
+    }
+
+    const data = await response.json();
 
   if (!response.ok) {
     return {
@@ -186,34 +237,62 @@ export async function verifyOtpAction(
   }
 
   redirect(ROUTES.DASHBOARD);
+  } catch (error) {
+    // Re-throw redirect errors - they are expected behavior
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    console.error('[VerifyOTP] Network error:', error);
+    return {
+      success: false,
+      message: 'Network error. Please check your connection.',
+    };
+  }
 }
 
 /**
  * RESEND OTP ACTION
  */
 export async function resendOtpAction(email: string): Promise<FormState> {
-  const response = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email }),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/resend-otp`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
 
-  const data = await response.json();
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      return {
+        success: false,
+        message: 'Unable to connect to server.',
+      };
+    }
 
-  if (!response.ok) {
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || 'Failed to resend code',
+      };
+    }
+
+    return {
+      success: true,
+      message: 'New verification code sent',
+    };
+  } catch (error) {
+    console.error('[ResendOTP] Error:', error);
     return {
       success: false,
-      message: data.message || 'Failed to resend code',
+      message: 'Network error. Please try again.',
     };
   }
-
-  return {
-    success: true,
-    message: 'New verification code sent',
-  };
 }
 
 
@@ -251,44 +330,66 @@ export async function loginAction(
   }
 
   // Make login request
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(input),
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    });
 
-  const data = await response.json();
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('[Login] Non-JSON response');
+      return {
+        success: false,
+        message: 'Unable to connect to server. Please ensure the backend is running on ' + API_BASE_URL,
+      };
+    }
 
-  if (!response.ok) {
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || 'Invalid email or password',
+      };
+    }
+
+    // Forward the Set-Cookie from the backend response
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) {
+      const cookieStore = await cookies();
+      // Parse the cookie - format: habitecho_token=value; Path=/; HttpOnly; ...
+      const cookieParts = setCookie.split(';');
+      const [nameValue] = cookieParts;
+      const [name, ...valueParts] = nameValue.split('=');
+      const value = valueParts.join('='); // Handle values that might contain =
+
+      cookieStore.set(name.trim(), value, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax', // Use 'lax' to allow redirects
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+      });
+    }
+
+    redirect(ROUTES.DASHBOARD);
+  } catch (error) {
+    // Re-throw redirect errors - they are expected behavior
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    console.error('[Login] Network error:', error);
     return {
       success: false,
-      message: data.message || 'Invalid email or password',
+      message: 'Network error. Please check your connection and ensure the backend is running.',
     };
   }
-
-  // Forward the Set-Cookie from the backend response
-  const setCookie = response.headers.get('set-cookie');
-  if (setCookie) {
-    const cookieStore = await cookies();
-    // Parse the cookie - format: habitecho_token=value; Path=/; HttpOnly; ...
-    const cookieParts = setCookie.split(';');
-    const [nameValue] = cookieParts;
-    const [name, ...valueParts] = nameValue.split('=');
-    const value = valueParts.join('='); // Handle values that might contain =
-
-    cookieStore.set(name.trim(), value, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', // Use 'lax' to allow redirects
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
-  }
-
-  redirect(ROUTES.DASHBOARD);
 }
 
 // ============================================

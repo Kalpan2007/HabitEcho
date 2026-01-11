@@ -60,7 +60,7 @@ export async function createEntryAction(
   formData: FormData
 ): Promise<FormState> {
   const input: CreateEntryInput = {
-    entryDate: formData.get('entryDate') as string,
+    date: formData.get('entryDate') as string,
     status: formData.get('status') as EntryStatus,
   };
 
@@ -82,7 +82,7 @@ export async function createEntryAction(
   // Validate
   const errors: Record<string, string[]> = {};
 
-  if (!input.entryDate) {
+  if (!input.date) {
     errors.entryDate = ['Date is required'];
   }
 
@@ -187,8 +187,8 @@ export async function quickLogEntryAction(
   status: EntryStatus,
   percentComplete?: number
 ): Promise<FormState> {
-  const input: CreateEntryInput = {
-    entryDate,
+  const input = {
+    date: entryDate, // Backend expects 'date', not 'entryDate'
     status,
     percentComplete: percentComplete !== undefined
       ? percentComplete
