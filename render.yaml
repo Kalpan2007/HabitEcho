@@ -1,0 +1,37 @@
+# Render Blueprint Configuration
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: habitecho-server
+    runtime: node
+    region: oregon # or your preferred region
+    plan: free # Change to starter or higher for production
+    rootDir: server
+    buildCommand: npm ci && npm run build && npm run prisma:migrate:prod
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 20.10.0
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+      # These should be set in Render dashboard (not in file for security)
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: COOKIE_SECRET
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+    healthCheckPath: /api/v1/health
