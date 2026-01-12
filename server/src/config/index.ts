@@ -12,6 +12,7 @@ const envSchema = z.object({
   COOKIE_SECRET: z.string().min(32),
   OTP_EXPIRY_MINUTES: z.string().transform(Number).default('10'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  CORS_ORIGIN: z.string().default('http://localhost:3000'),
   // Email configuration (optional in development)
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.string().transform(Number).optional(),
@@ -93,7 +94,7 @@ export const config = {
   },
 
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: env.CORS_ORIGIN,
   },
 } as const;
 

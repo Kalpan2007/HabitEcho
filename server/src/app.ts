@@ -108,6 +108,19 @@ export function createApp(): Express {
   }
 
   // ============================================
+  // HEALTH CHECK ENDPOINT
+  // ============================================
+
+  app.get('/health', (req, res) => {
+    res.status(200).json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: config.env,
+    });
+  });
+
+  // ============================================
   // API ROUTES
   // ============================================
 

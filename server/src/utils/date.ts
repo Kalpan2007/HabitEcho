@@ -32,7 +32,6 @@ export function parseAndNormalizeDate(dateString: string, tz: string = 'UTC'): D
   // storage value because @db.Date strips time anyway.
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
     const result = dayjs.utc(dateString).startOf('day').toDate();
-    console.log(`[DEBUG] parseAndNormalizeDate: "${dateString}" => ${result.toISOString()} (UTC Storage)`);
     return result;
   }
 
@@ -40,7 +39,6 @@ export function parseAndNormalizeDate(dateString: string, tz: string = 'UTC'): D
   const localDate = dayjs(dateString).tz(tz);
   const dateStr = localDate.format('YYYY-MM-DD');
   const result = dayjs.utc(dateStr).startOf('day').toDate();
-  console.log(`[DEBUG] parseAndNormalizeDate: "${dateString}" in tz "${tz}" => ${dateStr} => ${result.toISOString()} (UTC Storage)`);
   return result;
 }
 
