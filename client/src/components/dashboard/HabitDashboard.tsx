@@ -86,7 +86,7 @@ export function HabitDashboard() {
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard
                         label="Today's Progress"
-                        value={`${summary.todayCompletion.completed}/${summary.todayCompletion.total}`}
+                        value={`${summary.todayCompletion?.completed ?? 0}/${summary.todayCompletion?.total ?? summary.todayCompletion?.scheduled ?? 0}`}
                         icon={
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -170,10 +170,10 @@ export function HabitDashboard() {
             </Card>
 
             {/* Rolling averages */}
-            {summary && (
+            {summary?.rollingAverage && (
                 <Card>
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Rolling Averages</h2>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="text-center p-4 bg-gray-50 rounded-lg">
                             <p className="text-2xl font-bold text-gray-900">{summary.rollingAverage.last7Days}%</p>
                             <p className="text-sm text-gray-500">Last 7 days</p>

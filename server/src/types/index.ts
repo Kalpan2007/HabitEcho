@@ -157,7 +157,7 @@ export interface UpdateHabitLogInput {
 export interface HabitLogPublic {
   id: string;
   habitId: string;
-  date: Date;
+  date: string; // YYYY-MM-DD format to prevent timezone shifts
   status: EntryStatus;
   completed: boolean;
   percentComplete: number | null;
@@ -181,6 +181,7 @@ export interface PerformanceSummary {
   todayCompletion: {
     completed: number;
     scheduled: number;
+    total: number; // Alias for frontend compatibility
   };
   rollingAverage: {
     last7Days: number;
@@ -219,8 +220,6 @@ export interface StreakInfo {
   currentStreak: number;
   longestStreak: number;
 }
-
-export type EntryStatus = 'DONE' | 'PARTIAL' | 'MISSED' | 'SKIPPED';
 
 export interface HabitLogEntry {
   id: string;

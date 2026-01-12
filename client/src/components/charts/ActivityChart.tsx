@@ -10,7 +10,6 @@ import {
     ResponsiveContainer,
     Cell
 } from 'recharts';
-import { format, parseISO } from 'date-fns';
 import type { HeatmapDataPoint } from '@/types';
 
 interface ActivityChartProps {
@@ -29,11 +28,18 @@ export function ActivityChart({ data }: ActivityChartProps) {
     // Process data for the chart
     // Filter last 30 days for better visibility or show all if density allows
     // Let's show last 30 days by default for clarity
-    const recentData = data.slice(-30).map(point => ({
-        ...point,
-        score: point.status === 'DONE' ? 100 : point.status === 'PARTIAL' ? 50 : 0,
-        displayDate: format(parseISO(point.date), 'MMM d'),
-    }));
+    const recentData = data.slice(-30).map(point => {
+        // point.date is already in YYYY-MM-DD format
+        const [year, month, day] = point.date.split('-');
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const displayDate = `${monthNames[parseInt(month) - 1]} ${parseInt(day)}`;
+        
+        return {
+            ...point,
+            score: point.status === 'DONE' ? 100 : point.status === 'PARTIAL' ? 50 : 0,
+            displayDate,
+        };
+    });
 
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {

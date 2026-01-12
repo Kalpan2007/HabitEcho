@@ -12,11 +12,12 @@ import type {
 /**
  * Format habit log for public response
  */
-function formatHabitLogPublic(log: any): HabitLogPublic {
+function formatHabitLogPublic(log: any, timezone?: string): HabitLogPublic {
+    const { formatDate } = require('../utils/date.js');
     return {
         id: log.id,
         habitId: log.habitId,
-        date: log.date,
+        date: formatDate(log.date, 'YYYY-MM-DD', timezone || 'UTC'),
         status: log.status as EntryStatus,
         completed: log.completed,
         percentComplete: log.percentComplete,
@@ -108,7 +109,7 @@ export async function createHabitLog(
         },
     });
 
-    return formatHabitLogPublic(log);
+    return formatHabitLogPublic(log, habit.timezone || 'UTC');
 }
 
 /**
@@ -175,7 +176,7 @@ export async function updateHabitLog(
         data: updateData,
     });
 
-    return formatHabitLogPublic(log);
+    return formatHabitLogPublic(log, habit?.timezone || 'UTC');
 }
 
 /**
@@ -226,8 +227,9 @@ export async function getHabitHistory(
         (prisma as any).habitLog.count({ where }),
     ]);
 
+    const timezone = habit?.timezone || 'UTC';
     return {
-        logs: logs.map(formatHabitLogPublic),
+        logs: logs.map((log: any) => formatHabitLogPublic(log, timezone)),
         total,
     };
 }
@@ -246,10 +248,11 @@ export async function getLogsForDate(
             userId,
             ...(habitIds ? { id: { in: habitIds } } : {}),
         },
-        select: { id: true },
+        select: { id: true, timezone: true },
     });
 
     const userHabitIds = userHabits.map((h: any) => h.id);
+    const habitTimezoneMap = new Map(userHabits.map((h: any) => [h.id, h.timezone || 'UTC']));
 
     const logs = await (prisma as any).habitLog.findMany({
         where: {
@@ -258,7 +261,7 @@ export async function getLogsForDate(
         },
     });
 
-    return logs.map(formatHabitLogPublic);
+    return logs.map((log: any) => formatHabitLogPublic(log, habitTimezoneMap.get(log.habitId) || 'UTC'));
 }
 
 /**
@@ -269,6 +272,11 @@ export async function getLogsInRange(
     startDate: Date,
     endDate: Date
 ): Promise<HabitLogPublic[]> {
+    const habit = await (prisma as any).habit.findUnique({
+        where: { id: habitId },
+        select: { timezone: true },
+    });
+
     const logs = await (prisma as any).habitLog.findMany({
         where: {
             habitId,
@@ -280,7 +288,7 @@ export async function getLogsInRange(
         orderBy: { date: 'asc' },
     });
 
-    return logs.map(formatHabitLogPublic);
+    return logs.map((log: any) => formatHabitLogPublic(log, habit?.timezone || 'UTC'));
 }
 
 /**

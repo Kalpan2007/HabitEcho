@@ -106,7 +106,8 @@ export interface UpdateEntryInput {
 
 export interface TodayCompletion {
   completed: number;
-  scheduled: number;
+  total: number;
+  scheduled?: number;
 }
 
 export interface RollingAverages {
@@ -120,12 +121,6 @@ export interface Momentum {
   previous: number;
   trend: MomentumTrend;
   percentageChange: number;
-}
-
-export interface TodayCompletion {
-  completed: number;
-  total: number;
-  percentage: number;
 }
 
 export interface PerformanceSummary {

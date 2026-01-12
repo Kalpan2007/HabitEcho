@@ -9,7 +9,6 @@ import {
     Tooltip,
     ResponsiveContainer
 } from 'recharts';
-import { format, parseISO, subDays, isAfter } from 'date-fns';
 import type { HeatmapDataPoint } from '@/types';
 
 interface TrendChartProps {
@@ -28,13 +27,14 @@ export function TrendChart({ data }: TrendChartProps) {
     // Calculate a rolling 7-day completion rate for each day in the dataset
     const processedData = data.map((point, index, array) => {
         // Get entries from the last 7 days relative to this point's date
-        const date = parseISO(point.date);
-        const weekStart = subDays(date, 7);
+        // point.date is already in YYYY-MM-DD format
+        const currentDateMs = new Date(point.date + 'T00:00:00').getTime();
+        const sevenDaysAgoMs = currentDateMs - (7 * 24 * 60 * 60 * 1000);
 
         // Filter window: entries strictly within (date - 7 days, date]
         const windowEntries = array.filter(p => {
-            const pDate = parseISO(p.date);
-            return isAfter(pDate, weekStart) && !isAfter(pDate, date);
+            const pDateMs = new Date(p.date + 'T00:00:00').getTime();
+            return pDateMs > sevenDaysAgoMs && pDateMs <= currentDateMs;
         });
 
         const totalInWindow = 7; // Fixed window size assumption or windowEntries.length? 
@@ -56,9 +56,14 @@ export function TrendChart({ data }: TrendChartProps) {
         // Normalize to 100%
         const rate = Math.round((windowScore / 7) * 100);
 
+        // Format display date
+        const [year, month, day] = point.date.split('-');
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const displayDate = `${monthNames[parseInt(month) - 1]} ${parseInt(day)}`;
+
         return {
             date: point.date,
-            displayDate: format(parseISO(point.date), 'MMM d'),
+            displayDate,
             rate
         };
     }).slice(-30); // Show last 30 days trend

@@ -194,6 +194,7 @@ export async function getPerformanceSummary(userId: string): Promise<Performance
     todayCompletion: {
       completed: todayCompleted,
       scheduled: todayScheduledHabits.length,
+      total: todayScheduledHabits.length, // Alias for frontend compatibility
     },
     rollingAverage: {
       last7Days,
@@ -210,24 +211,70 @@ async function calculateUserRollingAverage(
   timezone: string
 ): Promise<number> {
   const end = dayjs().tz(timezone).endOf('day');
-  const start = end.subtract(days - 1, 'day').startOf('day');
+  const windowStart = end.subtract(days - 1, 'day').startOf('day');
 
-  const logs = await prisma.habitLog.findMany({
-    where: {
-      habit: { userId },
-      date: {
-        gte: start.toDate(),
-        lte: end.toDate(),
-      },
+  // Get all active habits with their creation dates and schedules
+  const habits = await prisma.habit.findMany({
+    where: { userId, isActive: true, deletedAt: null },
+    select: { 
+      id: true, 
+      startDate: true, 
+      createdAt: true, 
+      frequency: true, 
+      scheduleDays: true,
+      timezone: true 
     },
-    orderBy: { date: 'asc' },
-    select: { status: true, percentComplete: true, date: true },
   });
 
-  const scheduledDates = generateDateRange(start.utc(true).toDate(), end.utc(true).toDate());
-  const entries = logs.map((l) => ({ status: l.status, percentComplete: l.percentComplete }));
+  if (habits.length === 0) return 0;
 
-  return calculateCompletionRate(entries, scheduledDates.length);
+  let totalScheduledDays = 0;
+  let totalCompletedWeight = 0;
+
+  for (const habit of habits) {
+    const habitTimezone = habit.timezone || timezone;
+    const habitStart = dayjs(habit.startDate).tz(habitTimezone).startOf('day');
+    const habitCreated = dayjs(habit.createdAt).tz(habitTimezone).startOf('day');
+    
+    // Use the later of windowStart, habitStart, or habitCreated
+    let effectiveStart = windowStart;
+    if (habitStart.isAfter(effectiveStart)) effectiveStart = habitStart;
+    if (habitCreated.isAfter(effectiveStart)) effectiveStart = habitCreated;
+    
+    // If habit starts after the window ends, skip it
+    if (effectiveStart.isAfter(end)) continue;
+
+    // Generate scheduled dates for this habit within the effective range
+    const rangeParams = generateDateRange(effectiveStart.utc(true).toDate(), end.utc(true).toDate());
+    const scheduledDates = rangeParams.filter(dateStr =>
+      isDateScheduled(new Date(dateStr), habit.frequency, habit.scheduleDays as number[], habitTimezone)
+    );
+
+    // Get logs for this habit in the range
+    const logs = await prisma.habitLog.findMany({
+      where: {
+        habitId: habit.id,
+        date: {
+          gte: effectiveStart.toDate(),
+          lte: end.toDate(),
+        },
+      },
+      select: { status: true, percentComplete: true },
+    });
+
+    // Add to totals
+    totalScheduledDays += scheduledDates.length;
+    
+    for (const log of logs) {
+      const weight = log.percentComplete !== null 
+        ? log.percentComplete / 100 
+        : log.status === 'DONE' ? 1 : 0;
+      totalCompletedWeight += weight;
+    }
+  }
+
+  if (totalScheduledDays === 0) return 0;
+  return Math.round((totalCompletedWeight / totalScheduledDays) * 100);
 }
 
 async function calculateUserStreaks(
@@ -237,11 +284,27 @@ async function calculateUserStreaks(
   const end = dayjs().tz(timezone).endOf('day');
   const start = end.subtract(180, 'day').startOf('day');
 
+  // Get habits with their creation dates
+  const habits = await prisma.habit.findMany({
+    where: { userId, isActive: true, deletedAt: null },
+    select: { id: true, createdAt: true, startDate: true },
+  });
+
+  if (habits.length === 0) return { currentStreak: 0, longestStreak: 0 };
+
+  // Find the earliest habit creation date (no streak before any habit exists)
+  const earliestHabitStart = habits.reduce((earliest, h) => {
+    const hStart = dayjs(h.startDate || h.createdAt).tz(timezone);
+    return hStart.isBefore(earliest) ? hStart : earliest;
+  }, dayjs().tz(timezone));
+
+  const effectiveStart = earliestHabitStart.isAfter(start) ? earliestHabitStart : start;
+
   const logs = await prisma.habitLog.findMany({
     where: {
-      habit: { userId },
+      habit: { userId, isActive: true, deletedAt: null },
       date: {
-        gte: start.toDate(),
+        gte: effectiveStart.toDate(),
         lte: end.toDate(),
       },
     },
@@ -249,7 +312,7 @@ async function calculateUserStreaks(
     select: { status: true, percentComplete: true, date: true },
   });
 
-  const scheduledDates = generateDateRange(start.utc(true).toDate(), end.utc(true).toDate());
+  const scheduledDates = generateDateRange(effectiveStart.utc(true).toDate(), end.utc(true).toDate());
   const streaks = calculateStreaks(logs, scheduledDates, timezone);
   return streaks;
 }
@@ -263,42 +326,71 @@ async function calculateMomentum(
   trend: 'UP' | 'DOWN' | 'STABLE';
   percentageChange: number;
 }> {
+  // Calculate current (last 7 days) and previous (7-14 days ago) averages
+  // Using the fixed calculateUserRollingAverage that respects habit creation dates
+  const current = await calculateUserRollingAverage(userId, 7, timezone);
+  
+  // For previous period, we need a custom calculation for days 8-14
   const end = dayjs().tz(timezone).endOf('day');
-  const start = end.subtract(30, 'day').startOf('day');
+  const prevEnd = end.subtract(7, 'day');
+  const prevStart = end.subtract(13, 'day').startOf('day');
 
-  const logs = await prisma.habitLog.findMany({
-    where: {
-      habit: { userId },
-      date: {
-        gte: start.toDate(),
-        lte: end.toDate(),
-      },
+  // Get habits with their creation dates
+  const habits = await prisma.habit.findMany({
+    where: { userId, isActive: true, deletedAt: null },
+    select: { 
+      id: true, 
+      startDate: true, 
+      createdAt: true, 
+      frequency: true, 
+      scheduleDays: true,
+      timezone: true 
     },
-    orderBy: { date: 'asc' },
-    select: { status: true, percentComplete: true, date: true, habitId: true },
   });
 
-  const last7End = dayjs().tz(timezone).endOf('day');
-  const last7Start = last7End.subtract(6, 'day').startOf('day');
-  const last7Dates = generateDateRange(last7Start.utc(true).toDate(), last7End.utc(true).toDate());
+  let totalScheduledDays = 0;
+  let totalCompletedWeight = 0;
 
-  const recentEntriesByHabit = new Map<string, Array<{ status: string; percentComplete: number | null }>>();
-  for (const log of logs) {
-    const key = log.habitId;
-    const arr = recentEntriesByHabit.get(key) || [];
-    arr.push({ status: log.status, percentComplete: log.percentComplete });
-    recentEntriesByHabit.set(key, arr);
+  for (const habit of habits) {
+    const habitTimezone = habit.timezone || timezone;
+    const habitStart = dayjs(habit.startDate).tz(habitTimezone).startOf('day');
+    const habitCreated = dayjs(habit.createdAt).tz(habitTimezone).startOf('day');
+    
+    // Use the later of prevStart, habitStart, or habitCreated
+    let effectiveStart = prevStart;
+    if (habitStart.isAfter(effectiveStart)) effectiveStart = habitStart;
+    if (habitCreated.isAfter(effectiveStart)) effectiveStart = habitCreated;
+    
+    // If habit starts after prevEnd, skip it for previous period
+    if (effectiveStart.isAfter(prevEnd)) continue;
+
+    const rangeParams = generateDateRange(effectiveStart.utc(true).toDate(), prevEnd.utc(true).toDate());
+    const scheduledDates = rangeParams.filter(dateStr =>
+      isDateScheduled(new Date(dateStr), habit.frequency, habit.scheduleDays as number[], habitTimezone)
+    );
+
+    const logs = await prisma.habitLog.findMany({
+      where: {
+        habitId: habit.id,
+        date: {
+          gte: effectiveStart.toDate(),
+          lte: prevEnd.toDate(),
+        },
+      },
+      select: { status: true, percentComplete: true },
+    });
+
+    totalScheduledDays += scheduledDates.length;
+    
+    for (const log of logs) {
+      const weight = log.percentComplete !== null 
+        ? log.percentComplete / 100 
+        : log.status === 'DONE' ? 1 : 0;
+      totalCompletedWeight += weight;
+    }
   }
 
-  let current = 0;
-  let previous = 0;
-
-  for (const [habitId, entries] of recentEntriesByHabit.entries()) {
-    const habitCurrent = calculateCompletionRate(entries.slice(-7), last7Dates.length);
-    const habitPrevious = calculateCompletionRate(entries.slice(-14, -7), last7Dates.length);
-    current += habitCurrent;
-    previous += habitPrevious;
-  }
+  const previous = totalScheduledDays === 0 ? 0 : Math.round((totalCompletedWeight / totalScheduledDays) * 100);
 
   const trend: 'UP' | 'DOWN' | 'STABLE' = current > previous ? 'UP' : current < previous ? 'DOWN' : 'STABLE';
   const percentageChange = previous === 0 ? (current > 0 ? 100 : 0) : Math.round(((current - previous) / previous) * 100);

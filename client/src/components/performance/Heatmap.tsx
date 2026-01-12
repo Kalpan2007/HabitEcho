@@ -46,13 +46,15 @@ export function Heatmap({ data, className }: HeatmapProps) {
   const weeks: HeatmapDataPoint[][] = [];
   let currentWeek: HeatmapDataPoint[] = [];
 
-  // Sort data by date
+  // Sort data by date (already in YYYY-MM-DD format)
   const sortedData = [...data].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    (a, b) => a.date.localeCompare(b.date)
   );
 
   sortedData.forEach((point, index) => {
-    const date = new Date(point.date);
+    // Parse YYYY-MM-DD date string
+    const [year, month, day] = point.date.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     const dayOfWeek = date.getDay();
 
     // Start new week on Sunday
@@ -90,18 +92,17 @@ export function Heatmap({ data, className }: HeatmapProps) {
         {weeks.map((week, weekIndex) => (
           <div key={weekIndex} className="flex flex-col gap-1">
             {week.map((point) => {
-              const date = new Date(point.date);
-              const formattedDate = date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-              });
+              // Parse YYYY-MM-DD date string
+              const [year, month, day] = point.date.split('-').map(Number);
+              const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              const formattedDate = `${monthNames[month - 1]} ${day}`;
 
               return (
                 <div
                   key={point.date}
                   className={cn(
                     'h-3 w-3 rounded-sm transition-colors',
-                    getColor(point.value, point.status)
+                    getColor(point.value ?? 0, point.status)
                   )}
                   title={`${formattedDate}: ${
                     point.value === -1

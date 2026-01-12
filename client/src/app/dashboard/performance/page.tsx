@@ -159,20 +159,20 @@ export default async function PerformancePage() {
       )}
 
       {/* Rolling Averages */}
-      {summary && (
+      {summary?.rollingAverage && (
         <Card>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Rolling Averages</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-3xl font-bold text-indigo-600">{summary.rollingAverages.last7Days}%</p>
+              <p className="text-3xl font-bold text-indigo-600">{summary.rollingAverage.last7Days}%</p>
               <p className="text-sm text-gray-500 mt-1">Last 7 days</p>
             </div>
             <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-3xl font-bold text-indigo-600">{summary.rollingAverages.last14Days}%</p>
+              <p className="text-3xl font-bold text-indigo-600">{summary.rollingAverage.last14Days}%</p>
               <p className="text-sm text-gray-500 mt-1">Last 14 days</p>
             </div>
             <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-3xl font-bold text-indigo-600">{summary.rollingAverages.last30Days}%</p>
+              <p className="text-3xl font-bold text-indigo-600">{summary.rollingAverage.last30Days}%</p>
               <p className="text-sm text-gray-500 mt-1">Last 30 days</p>
             </div>
           </div>
