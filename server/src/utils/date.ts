@@ -23,15 +23,25 @@ export function getTodayInTimezone(tz: string = 'UTC'): Dayjs {
 
 /**
  * Parse a date string and normalize to start of day in UTC
+ * This ensures "2026-01-12" is stored as "2026-01-12 00:00:00 UTC" to prevent
+ * timezone shifts when retrieving from @db.Date columns
  */
 export function parseAndNormalizeDate(dateString: string, tz: string = 'UTC'): Date {
-  // If the date string is in YYYY-MM-DD format, interpret it in the provided timezone
-  // Then normalize to UTC start-of-day to store consistently
+  // If the date string is in YYYY-MM-DD format, verify it's a valid date
+  // and store as UTC midnight. We explicitly IGNORE the timezone for the
+  // storage value because @db.Date strips time anyway.
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-    return dayjs.tz(dateString, tz).startOf('day').utc().toDate();
+    const result = dayjs.utc(dateString).startOf('day').toDate();
+    console.log(`[DEBUG] parseAndNormalizeDate: "${dateString}" => ${result.toISOString()} (UTC Storage)`);
+    return result;
   }
 
-  return dayjs(dateString).tz(tz).startOf('day').utc().toDate();
+  // If input is not a simple date string, convert to timezone then extract YYYY-MM-DD
+  const localDate = dayjs(dateString).tz(tz);
+  const dateStr = localDate.format('YYYY-MM-DD');
+  const result = dayjs.utc(dateStr).startOf('day').toDate();
+  console.log(`[DEBUG] parseAndNormalizeDate: "${dateString}" in tz "${tz}" => ${dateStr} => ${result.toISOString()} (UTC Storage)`);
+  return result;
 }
 
 /**
@@ -41,32 +51,50 @@ export function parseAndNormalizeDate(dateString: string, tz: string = 'UTC'): D
  */
 export function formatDate(date: Date | Dayjs, format: string = 'YYYY-MM-DD', tz?: string): string {
   if (tz) {
-    return dayjs(date).tz(tz).format(format);
+    const result = dayjs(date).tz(tz).format(format);
+    // console.log(`[DEBUG] formatDate: ${date instanceof Date ? date.toISOString() : date.format()} in tz "${tz}" => "${result}"`);
+    return result;
   }
   // Default to UTC for backward compatibility with existing callers
-  return dayjs(date).utc().format(format);
+  const result = dayjs(date).utc().format(format);
+  // console.log(`[DEBUG] formatDate (UTC): ${date instanceof Date ? date.toISOString() : date.format()} => "${result}"`);
+  return result;
 }
 
 /**
  * Get date range for analytics
  */
 export function getDateRange(days: number, tz: string = 'UTC'): { start: Date; end: Date } {
-  const end = getTodayInTimezone(tz);
-  const start = end.subtract(days - 1, 'day');
+  // Return Date objects matching the stored UTC Midnight format
+  const endLocal = getTodayInTimezone(tz);
+  const startLocal = endLocal.subtract(days - 1, 'day');
+
+  const startStr = startLocal.format('YYYY-MM-DD');
+  const endStr = endLocal.format('YYYY-MM-DD');
 
   return {
-    start: start.utc().toDate(),
-    end: end.utc().toDate(),
+    start: dayjs.utc(startStr).startOf('day').toDate(),
+    end: dayjs.utc(endStr).startOf('day').toDate(),
   };
 }
 
 /**
  * Generate array of dates between start and end (inclusive)
+ * Returns YYYY-MM-DD strings in the specified timezone
  */
-export function generateDateRange(start: Date, end: Date): string[] {
+export function generateDateRange(start: Date, end: Date, timezone: string = 'UTC'): string[] {
   const dates: string[] = [];
-  let current = dayjs(start).utc(); // Ensure UTC
-  const endDate = dayjs(end).utc(); // Ensure UTC
+  // Since start/end might be UTC Storage dates, we should just iterate them in UTC
+  // because the date 'value' (YYYY-MM-DD) is what matters.
+  // Converting storage date (UTC Midnight) to Timezone might shift it back one day (e.g. Asia/Kolkata).
+  // But wait, if we changed storage to UTC Midnight, then reading it as UTC gives "2026-01-12".
+  // Reading it as "Asia/Kolkata" gives "2026-01-12 05:30". Same day.
+  // Reading it as "America/New_York" gives "2026-01-11 19:00". Previous Day!
+
+  // Solution: Treat start/end as naive dates if they are Date objects coming from DB/Storage logic
+  // Use UTC to extract keys.
+  let current = dayjs.utc(start).startOf('day');
+  const endDate = dayjs.utc(end).startOf('day');
 
   while (current.isSameOrBefore(endDate, 'day')) {
     dates.push(current.format('YYYY-MM-DD'));
@@ -80,13 +108,20 @@ export function generateDateRange(start: Date, end: Date): string[] {
  * Check if a date is within a habit's schedule
  */
 export function isDateScheduled(
-  date: Date | Dayjs,
+  date: Date | Dayjs | string,
   frequency: string,
   scheduleDays: number[] | null,
   timezone: string = 'UTC'
 ): boolean {
   // Evaluate the date in the habit's timezone so weekday/month checks align with the user expectation
-  const d = dayjs(date).tz(timezone);
+  let d: Dayjs;
+  if (typeof date === 'string') {
+      // If string, parse in target timezone directly
+      d = dayjs.tz(date, timezone);
+  } else {
+      // If Date/Dayjs, convert to timezone
+      d = dayjs(date).tz(timezone);
+  }
 
   switch (frequency) {
     case 'DAILY':

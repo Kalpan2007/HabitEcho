@@ -72,12 +72,17 @@ async function calculateRollingAverage(
   // If the habit hasn't started yet (future start date), return 0
   if (start.isAfter(end)) return 0;
 
+  // Convert local boundaries to UTC Midnight Storage Format for DB Query
+  // This ensures we find all logs for the intended local dates, regardless of timezone shift
+  const queryStart = dayjs.utc(start.format('YYYY-MM-DD')).startOf('day').toDate();
+  const queryEnd = dayjs.utc(end.format('YYYY-MM-DD')).startOf('day').toDate();
+
   const logs = await prisma.habitLog.findMany({
     where: {
       habitId,
       date: {
-        gte: start.toDate(), // Fetch from the earliest potential start
-        lte: end.toDate(),
+        gte: queryStart,
+        lte: queryEnd,
       },
     },
     orderBy: { date: 'asc' },
@@ -91,7 +96,15 @@ async function calculateRollingAverage(
   const createdStart = dayjs(habit.createdAt).tz(timezone).startOf('day');
 
   if (start.isBefore(createdStart)) {
-    const hasPreCreationLogs = logs.some(l => dayjs(l.date).tz(timezone).isBefore(createdStart));
+    // Check for pre-creation logs using "Nominal Date" comparison (String comparison)
+    // l.date is UTC Midnight Storage. createdStart is Local.
+    // Convert l.date to YYYY-MM-DD String to compare with createdStart string.
+    const createdDateStr = createdStart.format('YYYY-MM-DD');
+    const hasPreCreationLogs = logs.some(l => {
+       const logDateStr = dayjs.utc(l.date).format('YYYY-MM-DD');
+       return logDateStr < createdDateStr;
+    });
+
     if (!hasPreCreationLogs) {
       if (createdStart.isAfter(start)) {
         start = createdStart;
@@ -99,16 +112,26 @@ async function calculateRollingAverage(
     }
   }
 
-  // Filter logs to the final start date (using timezone-aware comparison)
-  const relevantLogs = logs.filter(l => dayjs(l.date).tz(timezone).isSameOrAfter(start, 'day'));
+  // Filter logs to the final start date (using string comparison for safety)
+  // Ensure we match logs >= start date (Nominal)
+  const startDateStr = start.format('YYYY-MM-DD');
+  const relevantLogs = logs.filter(l => {
+    const logDateStr = dayjs.utc(l.date).format('YYYY-MM-DD');
+    return logDateStr >= startDateStr;
+  });
 
-  // Generate all days in range, then filter for days where the habit is actually scheduled
-  // Use utc(true) to keep the local time (e.g. 00:00) when converting to UTC-based Date for generation
-  // This prevents shifting to the previous day due to timezone offsets.
-  const rangeParams = generateDateRange(start.utc(true).toDate(), end.utc(true).toDate());
-  const scheduledDates = rangeParams.filter(dateStr =>
-    isDateScheduled(new Date(dateStr), habit.frequency, habit.scheduleDays as number[], timezone)
-  );
+  // Generate all days in range in the habit's timezone
+  // Use queryStart/queryEnd (Storage Dates / UTC Midnight) so generateDateRange iterates correct nominal days
+  const rangeParams = generateDateRange(queryStart, queryEnd, timezone);
+  const scheduledDates = rangeParams.filter(dateStr => {
+    // Parse the YYYY-MM-DD string in the habit's timezone to check if it's scheduled
+    // This expects string input now? checkDate is Date.
+    // isDateScheduled supports string.
+    // But here we construct a Date?
+    // isDateScheduled checks string if passed string.
+    // Let's pass the dateStr directly.
+    return isDateScheduled(dateStr, habit.frequency, habit.scheduleDays as number[], timezone);
+  });
 
   const entries = relevantLogs.map((l) => ({ status: l.status, percentComplete: l.percentComplete }));
 
@@ -161,7 +184,7 @@ export async function getPerformanceSummary(userId: string): Promise<Performance
 
   const todayScheduledHabits = activeHabits.filter((habit: any) =>
     isDateScheduled(
-      normalizedToday,
+      todayStr,
       habit.frequency,
       habit.scheduleDays as number[] | null,
       habit.timezone || timezone
@@ -245,10 +268,11 @@ async function calculateUserRollingAverage(
     if (effectiveStart.isAfter(end)) continue;
 
     // Generate scheduled dates for this habit within the effective range
-    const rangeParams = generateDateRange(effectiveStart.utc(true).toDate(), end.utc(true).toDate());
-    const scheduledDates = rangeParams.filter(dateStr =>
-      isDateScheduled(new Date(dateStr), habit.frequency, habit.scheduleDays as number[], habitTimezone)
-    );
+    const rangeParams = generateDateRange(effectiveStart.toDate(), end.toDate(), habitTimezone);
+    const scheduledDates = rangeParams.filter(dateStr => {
+      const checkDate = dayjs.tz(dateStr, habitTimezone).toDate();
+      return isDateScheduled(checkDate, habit.frequency, habit.scheduleDays as number[], habitTimezone);
+    });
 
     // Get logs for this habit in the range
     const logs = await prisma.habitLog.findMany({
@@ -312,7 +336,7 @@ async function calculateUserStreaks(
     select: { status: true, percentComplete: true, date: true },
   });
 
-  const scheduledDates = generateDateRange(effectiveStart.utc(true).toDate(), end.utc(true).toDate());
+  const scheduledDates = generateDateRange(effectiveStart.toDate(), end.toDate(), timezone);
   const streaks = calculateStreaks(logs, scheduledDates, timezone);
   return streaks;
 }
@@ -364,10 +388,11 @@ async function calculateMomentum(
     // If habit starts after prevEnd, skip it for previous period
     if (effectiveStart.isAfter(prevEnd)) continue;
 
-    const rangeParams = generateDateRange(effectiveStart.utc(true).toDate(), prevEnd.utc(true).toDate());
-    const scheduledDates = rangeParams.filter(dateStr =>
-      isDateScheduled(new Date(dateStr), habit.frequency, habit.scheduleDays as number[], habitTimezone)
-    );
+    const rangeParams = generateDateRange(effectiveStart.toDate(), prevEnd.toDate(), habitTimezone);
+    const scheduledDates = rangeParams.filter(dateStr => {
+      const checkDate = dayjs.tz(dateStr, habitTimezone).toDate();
+      return isDateScheduled(checkDate, habit.frequency, habit.scheduleDays as number[], habitTimezone);
+    });
 
     const logs = await prisma.habitLog.findMany({
       where: {
@@ -426,9 +451,21 @@ export async function getHabitPerformance(
   const timezone = habit.timezone;
   const entries = habit.logs.map((l: any) => ({ date: l.date, status: l.status, percentComplete: l.percentComplete }));
 
+  if (entries.length === 0) {
+    // No entries yet, return empty performance data
+    return {
+      habitId,
+      name: habit.name,
+      rollingAverage: 0,
+      momentum: { current: 0, previous: 0, trend: 'STABLE', percentageChange: 0 },
+      streaks: { currentStreak: 0, longestStreak: 0 },
+      heatmap: [],
+    };
+  }
+
   const start = dayjs(entries[0]?.date).tz(timezone).startOf('day');
   const end = dayjs(entries[entries.length - 1]?.date).tz(timezone).endOf('day');
-  const scheduledDates = generateDateRange(start.utc(true).toDate(), end.utc(true).toDate());
+  const scheduledDates = generateDateRange(start.toDate(), end.toDate(), timezone);
 
   const rollingAverage = await calculateRollingAverage(habitId, 7, timezone);
   const momentum = await calculateHabitMomentum(habitId, timezone);
@@ -469,7 +506,7 @@ async function calculateHabitMomentum(
 
   const last7End = dayjs().tz(timezone).endOf('day');
   const last7Start = last7End.subtract(6, 'day').startOf('day');
-  const last7Dates = generateDateRange(last7Start.utc(true).toDate(), last7End.utc(true).toDate());
+  const last7Dates = generateDateRange(last7Start.toDate(), last7End.toDate(), timezone);
 
   const entries = logs.map((l) => ({ status: l.status, percentComplete: l.percentComplete }));
   const current = calculateCompletionRate(entries.slice(-7), last7Dates.length);

@@ -46,6 +46,9 @@ export async function createHabitLog(
             frequency: true,
             scheduleDays: true,
             timezone: true,
+            user: {
+                select: { timezone: true }
+            }
         },
     });
 
@@ -57,16 +60,21 @@ export async function createHabitLog(
         throw new ForbiddenError('Access denied');
     }
 
-    // Use the habit's timezone when normalizing the YYYY-MM-DD date string
-    const date = parseAndNormalizeDate(input.date, (habit as any).timezone || 'UTC');
+    // Use the habit's timezone, fallback to user's timezone, then UTC
+    const timezone = habit.timezone || habit.user?.timezone || 'UTC';
+
+    // Normalize date to UTC Midnight for consistent storage
+    const date = parseAndNormalizeDate(input.date, timezone); // This now returns UTC Midnight
+    // console.log(`[DEBUG] createHabitLog: ...`);
 
     // Validate that the date is allowed by the schedule
+    // Pass the raw input string so isDateScheduled can check against the timezone correctly
     const { isDateScheduled } = await import('../utils/date.js');
     const isScheduled = isDateScheduled(
-        date,
+        input.date, // Pass string "YYYY-MM-DD"
         habit.frequency,
         habit.scheduleDays as number[] | null,
-        (habit as any).timezone || 'UTC'
+        timezone
     );
 
     if (!isScheduled) {
@@ -109,7 +117,7 @@ export async function createHabitLog(
         },
     });
 
-    return formatHabitLogPublic(log, habit.timezone || 'UTC');
+    return formatHabitLogPublic(log, timezone);
 }
 
 /**
