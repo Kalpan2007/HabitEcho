@@ -1,43 +1,25 @@
-# Render Blueprint Configuration
-# https://render.com/docs/blueprint-spec
-
 services:
   - type: web
     name: habitecho-server
     runtime: node
-    region: oregon # or your preferred region
-    plan: free # Change to starter or higher for production
     rootDir: server
-    buildCommand: npm ci && npx prisma generate && npm run build && npx prisma migrate deploy
-    startCommand: npm run start
+    buildCommand: npm install && npx prisma generate && npm run build && npx prisma migrate deploy
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: NODE_VERSION
-        value: 20.10.0
-      - key: NPM_CONFIG_PRODUCTION
-        value: "false"
-      # Database connection strings (set in Render dashboard for security)
-      # DATABASE_URL: Connection pooler (port 6543) for runtime
-      # DIRECT_URL: Direct connection (port 5432) for migrations
       - key: DATABASE_URL
-        sync: false
-      - key: DIRECT_URL
-        sync: false
+        fromDatabase:
+          name: habitecho-db
+          property: connectionString
       - key: JWT_SECRET
-        sync: false
+        generateValue: true
       - key: COOKIE_SECRET
-        sync: false
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_PORT
-        sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: SMTP_FROM
-        sync: false
+        generateValue: true
       - key: CORS_ORIGIN
-        sync: false
-    healthCheckPath: /api/v1/health
+        value: https://your-frontend-url.com
+
+databases:
+  - name: habitecho-db
+    databaseName: habitecho
+    user: habitecho
