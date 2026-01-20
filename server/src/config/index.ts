@@ -85,7 +85,7 @@ export const config = {
   },
 
   email: {
-    enabled: process.env.EMAIL_ENABLED === "true",
+    enabled: !!(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS && env.SMTP_FROM),
     host: env.SMTP_HOST || '',
     port: env.SMTP_PORT || 587,
     user: env.SMTP_USER || '',
