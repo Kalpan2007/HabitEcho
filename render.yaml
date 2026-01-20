@@ -8,7 +8,7 @@ services:
     region: oregon # or your preferred region
     plan: free # Change to starter or higher for production
     rootDir: server
-    buildCommand: npm ci && npm run build && npm run prisma:migrate:prod
+    buildCommand: npm ci && npx prisma generate && npm run build && npx prisma migrate deploy
     startCommand: npm run start
     envVars:
       - key: NODE_ENV
@@ -17,8 +17,12 @@ services:
         value: 20.10.0
       - key: NPM_CONFIG_PRODUCTION
         value: "false"
-      # These should be set in Render dashboard (not in file for security)
+      # Database connection strings (set in Render dashboard for security)
+      # DATABASE_URL: Connection pooler (port 6543) for runtime
+      # DIRECT_URL: Direct connection (port 5432) for migrations
       - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
         sync: false
       - key: JWT_SECRET
         sync: false
@@ -33,5 +37,7 @@ services:
       - key: SMTP_PASS
         sync: false
       - key: SMTP_FROM
+        sync: false
+      - key: CORS_ORIGIN
         sync: false
     healthCheckPath: /api/v1/health
