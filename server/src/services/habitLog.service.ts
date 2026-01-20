@@ -269,7 +269,10 @@ export async function getLogsForDate(
         },
     });
 
-    return logs.map((log: any) => formatHabitLogPublic(log, habitTimezoneMap.get(log.habitId) || 'UTC'));
+    return logs.map((log: any) => {
+        const timezone = habitTimezoneMap.get(log.habitId) || 'UTC';
+        return formatHabitLogPublic(log, timezone);
+    });
 }
 
 /**
