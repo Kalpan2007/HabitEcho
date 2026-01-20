@@ -260,7 +260,9 @@ export async function getLogsForDate(
     });
 
     const userHabitIds = userHabits.map((h: any) => h.id);
-    const habitTimezoneMap = new Map(userHabits.map((h: any) => [h.id, h.timezone || 'UTC']));
+    const habitTimezoneMap = new Map<string, string>(
+        userHabits.map((h: any) => [h.id, h.timezone || 'UTC'])
+    );
 
     const logs = await (prisma as any).habitLog.findMany({
         where: {
@@ -270,7 +272,7 @@ export async function getLogsForDate(
     });
 
     return logs.map((log: any) => {
-        const timezone = habitTimezoneMap.get(log.habitId) || 'UTC';
+        const timezone: string = habitTimezoneMap.get(log.habitId) || 'UTC';
         return formatHabitLogPublic(log, timezone);
     });
 }
