@@ -7,6 +7,33 @@ import type { User, ApiResponse } from '@/types';
 // SERVER-SIDE AUTH UTILITIES
 // ============================================
 
+// Timeout for auth requests (60 seconds to handle Render cold starts)
+const AUTH_TIMEOUT_MS = 60 * 1000;
+
+/**
+ * Helper to create a fetch with timeout for server-side requests
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number = AUTH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
 /**
  * Get the current authenticated user on the server side
  * Makes a request to /auth/me with the HttpOnly cookie
@@ -19,7 +46,7 @@ export async function getCurrentUser(): Promise<User | null> {
 
     // console.log('[Auth] Checking current user, cookies:', cookieHeader ? 'Present' : 'Missing');
 
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/me`, {
       credentials: 'include',
       cache: 'no-store',
       headers: {
@@ -35,7 +62,12 @@ export async function getCurrentUser(): Promise<User | null> {
     const data: ApiResponse<{ user: User }> = await response.json();
     return data.data.user;
   } catch (error) {
-    console.error('[Auth] getCurrentUser error:', error);
+    // Handle timeout errors gracefully
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('[Auth] getCurrentUser timeout - server may be cold starting');
+    } else {
+      console.error('[Auth] getCurrentUser error:', error);
+    }
     return null;
   }
 }

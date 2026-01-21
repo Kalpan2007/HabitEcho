@@ -19,8 +19,12 @@ import type {
 // BASE FETCH HELPER
 // ============================================
 
+// Timeout for API requests (60 seconds to handle Render cold starts)
+const API_TIMEOUT_MS = 60 * 1000;
+
 export interface ApiOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
+  timeout?: number; // Custom timeout in milliseconds
 }
 
 /**
@@ -28,12 +32,13 @@ export interface ApiOptions extends RequestInit {
  * - Always includes credentials for HttpOnly cookie
  * - Adds Content-Type header for JSON requests
  * - Handles response parsing and error formatting
+ * - Includes timeout handling for Render cold starts
  */
 async function apiFetch<T>(
   endpoint: string,
   options: ApiOptions = {}
 ): Promise<ApiResponse<T>> {
-  const { params, ...fetchOptions } = options;
+  const { params, timeout = API_TIMEOUT_MS, ...fetchOptions } = options;
 
   // Build URL with query params
   let url = `${API_BASE_URL}${endpoint}`;
@@ -50,23 +55,54 @@ async function apiFetch<T>(
     }
   }
 
-  const response = await fetch(url, {
-    credentials: 'include', // Always send HttpOnly cookies
-    cache: 'no-store', // Disable caching for user-specific data
-    ...fetchOptions,
-    headers: {
-      'Content-Type': 'application/json',
-      ...fetchOptions.headers,
-    },
-  });
+  // Create AbortController for timeout handling
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  const data = await response.json();
+  try {
+    const response = await fetch(url, {
+      credentials: 'include', // Always send HttpOnly cookies
+      cache: 'no-store', // Disable caching for user-specific data
+      signal: controller.signal,
+      ...fetchOptions,
+      headers: {
+        'Content-Type': 'application/json',
+        ...fetchOptions.headers,
+      },
+    });
 
-  if (!response.ok) {
-    throw new ApiError(data.message || 'An error occurred', response.status, data.error?.code);
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new ApiError(data.message || 'An error occurred', response.status, data.error?.code);
+    }
+
+    return data as ApiResponse<T>;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    // Handle timeout/abort errors
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new ApiError(
+        'Request timed out. The server may be starting up (Render cold start). Please try again.',
+        408,
+        'REQUEST_TIMEOUT'
+      );
+    }
+    
+    // Handle network errors (server unreachable)
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new ApiError(
+        'Unable to connect to server. Please check your connection and try again.',
+        503,
+        'NETWORK_ERROR'
+      );
+    }
+    
+    throw error;
   }
-
-  return data as ApiResponse<T>;
 }
 
 // ============================================

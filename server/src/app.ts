@@ -22,8 +22,8 @@ export function createApp(): Express {
   // GLOBAL MIDDLEWARE
   // ============================================
 
-  // Request timeout (30s)
-  app.use(requestTimeout(30));
+  // Request timeout (60s to handle Render cold starts)
+  app.use(requestTimeout(60));
 
   // ============================================
   // SECURITY MIDDLEWARE
