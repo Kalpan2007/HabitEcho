@@ -1,65 +1,144 @@
-import nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
+/**
+ * Brevo Transactional Email Service
+ * Uses Brevo's API instead of SMTP for production reliability
+ * API Documentation: https://developers.brevo.com/reference/sendtransacemail
+ */
+
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 
 // ============================================
-// EMAIL TRANSPORTER SETUP
+// TYPES
 // ============================================
 
-let transporter: Transporter | null = null;
-let lastVerifyTime: number = 0;
-const VERIFY_INTERVAL = 5 * 60 * 1000; // Verify connection every 5 minutes
+interface EmailRecipient {
+  email: string;
+  name?: string;
+}
+
+interface SendEmailOptions {
+  to: string | EmailRecipient | EmailRecipient[];
+  subject: string;
+  htmlContent: string;
+  textContent?: string;
+  replyTo?: EmailRecipient;
+  tags?: string[];
+}
+
+interface BrevoApiResponse {
+  messageId?: string;
+  messageIds?: string[];
+  code?: string;
+  message?: string;
+}
+
+interface EmailResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}
+
+// ============================================
+// BREVO API CLIENT
+// ============================================
+
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
 /**
- * Get or create the email transporter with connection verification
+ * Send email using Brevo Transactional Email API
  */
-async function getTransporter(): Promise<Transporter> {
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: config.email.host,
-      port: config.email.port,
-      secure: config.email.port === 465, // true for 465, false for other ports
-      auth: {
-        user: config.email.user,
-        pass: config.email.pass,
-      },
-      // Connection pooling for better performance
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-      // Timeouts
-      connectionTimeout: 60000, // 60 seconds for cold starts
-      greetingTimeout: 30000,
-      socketTimeout: 60000,
-    });
-
-    // Verify connection on first creation
-    try {
-      await transporter.verify();
-      logger.info('✅ SMTP connection established and verified');
-      lastVerifyTime = Date.now();
-    } catch (error) {
-      logger.error({ error }, '❌ SMTP connection failed');
-      transporter = null;
-      throw error;
-    }
-  } else {
-    // Periodically verify the connection is still alive
-    const now = Date.now();
-    if (now - lastVerifyTime > VERIFY_INTERVAL) {
-      try {
-        await transporter.verify();
-        lastVerifyTime = now;
-      } catch (error) {
-        logger.warn({ error }, '⚠️ SMTP connection lost, recreating...');
-        transporter = null;
-        return getTransporter(); // Recursively recreate
-      }
-    }
+async function sendEmailViaBrevoApi(options: SendEmailOptions): Promise<EmailResult> {
+  const apiKey = config.email.apiKey;
+  
+  if (!apiKey) {
+    logger.error('BREVO_API_KEY is not configured');
+    return { success: false, error: 'BREVO_API_KEY is not configured' };
   }
 
-  return transporter;
+  if (!config.email.from) {
+    logger.error('BREVO_SENDER_EMAIL is not configured');
+    return { success: false, error: 'BREVO_SENDER_EMAIL is not configured' };
+  }
+
+  // Normalize recipients to array format
+  const toRecipients: EmailRecipient[] = Array.isArray(options.to)
+    ? options.to
+    : typeof options.to === 'string'
+      ? [{ email: options.to }]
+      : [options.to];
+
+  const payload = {
+    sender: {
+      name: config.email.senderName,
+      email: config.email.from,
+    },
+    to: toRecipients,
+    replyTo: options.replyTo || {
+      name: config.email.senderName,
+      email: config.email.replyTo,
+    },
+    subject: options.subject,
+    htmlContent: options.htmlContent,
+    textContent: options.textContent,
+    tags: options.tags,
+  };
+
+  try {
+    logger.debug({ to: toRecipients, subject: options.subject }, '📧 Sending email via Brevo API...');
+
+    const response = await fetch(BREVO_API_URL, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': apiKey,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json() as BrevoApiResponse;
+
+    if (!response.ok) {
+      logger.error(
+        {
+          status: response.status,
+          statusText: response.statusText,
+          code: data.code,
+          message: data.message,
+          to: toRecipients.map(r => r.email),
+        },
+        '❌ Brevo API error'
+      );
+      return {
+        success: false,
+        error: data.message || `HTTP ${response.status}: ${response.statusText}`,
+      };
+    }
+
+    const messageId = data.messageId || data.messageIds?.[0];
+    
+    logger.info(
+      {
+        messageId,
+        to: toRecipients.map(r => r.email),
+        subject: options.subject,
+      },
+      '✅ Email sent successfully via Brevo API'
+    );
+
+    return { success: true, messageId };
+    
+  } catch (error: any) {
+    logger.error(
+      {
+        error: error.message,
+        stack: error.stack,
+        to: toRecipients.map(r => r.email),
+      },
+      '❌ Failed to send email via Brevo API'
+    );
+    return { success: false, error: error.message };
+  }
 }
 
 // ============================================
@@ -171,7 +250,7 @@ function generateReminderEmailHtml(userName: string, habitName: string, habitId:
 // ============================================
 
 /**
- * Send email verification link with retry logic
+ * Send email verification OTP with retry logic
  */
 export async function sendVerificationEmail(
   to: string,
@@ -184,60 +263,39 @@ export async function sendVerificationEmail(
   }
 
   const maxRetries = 3;
-  let lastError: any;
+  let lastError: string | undefined;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const transport = await getTransporter();
-      const mailOptions = {
-        from: `HabitEcho <${config.email.from}>`, // Proper format with name
-        replyTo: `HabitEcho <${config.email.replyTo}>`, // Reply-To header for user replies
-        to,
-        subject: '🔐 Verify Your Email - HabitEcho',
-        html: generateVerificationEmailHtml(token, userName),
-      };
+    const result = await sendEmailViaBrevoApi({
+      to: { email: to, name: userName },
+      subject: '🔐 Verify Your Email - HabitEcho',
+      htmlContent: generateVerificationEmailHtml(token, userName),
+      textContent: `Your HabitEcho verification code is: ${token}. This code expires in 15 minutes.`,
+      tags: ['verification', 'otp'],
+    });
 
-      const info = await transport.sendMail(mailOptions);
+    if (result.success) {
       logger.info(
-        { 
-          messageId: info.messageId, 
-          to, 
-          attempt,
-          accepted: info.accepted,
-          rejected: info.rejected 
-        }, 
+        { messageId: result.messageId, to, attempt },
         '✅ Verification email sent successfully'
       );
       return true;
-    } catch (error: any) {
-      lastError = error;
-      logger.warn(
-        { 
-          error: error.message, 
-          to, 
-          attempt, 
-          maxRetries,
-          code: error.code,
-          command: error.command
-        }, 
-        `⚠️ Failed to send verification email (attempt ${attempt}/${maxRetries})`
-      );
+    }
 
-      // Wait before retry (exponential backoff)
-      if (attempt < maxRetries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        
-        // Reset transporter to force reconnection
-        transporter = null;
-      }
+    lastError = result.error;
+    logger.warn(
+      { error: result.error, to, attempt, maxRetries },
+      `⚠️ Failed to send verification email (attempt ${attempt}/${maxRetries})`
+    );
+
+    // Wait before retry (exponential backoff)
+    if (attempt < maxRetries) {
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 
-  logger.error(
-    { error: lastError, to, maxRetries }, 
-    '❌ Failed to send verification email after all retries'
-  );
+  logger.error({ error: lastError, to, maxRetries }, '❌ Failed to send verification email after all retries');
   return false;
 }
 
@@ -255,31 +313,31 @@ export async function sendReminderEmail(
     return true;
   }
 
-  const maxRetries = 2; // Fewer retries for reminders
-  let lastError: any;
+  const maxRetries = 2;
+  let lastError: string | undefined;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const transport = await getTransporter();
-      const mailOptions = {
-        from: `HabitEcho <${config.email.from}>`,
-        replyTo: `HabitEcho <${config.email.replyTo}>`,
-        to,
-        subject: `⏰ Reminder: ${habitName}`,
-        html: generateReminderEmailHtml(userName, habitName, habitId),
-      };
+    const result = await sendEmailViaBrevoApi({
+      to: { email: to, name: userName },
+      subject: `⏰ Reminder: ${habitName}`,
+      htmlContent: generateReminderEmailHtml(userName, habitName, habitId),
+      textContent: `Hi ${userName}, don't forget to complete your habit: "${habitName}"!`,
+      tags: ['reminder', 'habit'],
+    });
 
-      const info = await transport.sendMail(mailOptions);
-      logger.info({ messageId: info.messageId, to, habitName, attempt }, '✅ Reminder email sent');
+    if (result.success) {
+      logger.info({ messageId: result.messageId, to, habitName, attempt }, '✅ Reminder email sent');
       return true;
-    } catch (error: any) {
-      lastError = error;
-      logger.warn({ error: error.message, to, habitName, attempt }, `⚠️ Failed to send reminder (attempt ${attempt}/${maxRetries})`);
+    }
 
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        transporter = null;
-      }
+    lastError = result.error;
+    logger.warn(
+      { error: result.error, to, habitName, attempt },
+      `⚠️ Failed to send reminder (attempt ${attempt}/${maxRetries})`
+    );
+
+    if (attempt < maxRetries) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
 
@@ -288,53 +346,72 @@ export async function sendReminderEmail(
 }
 
 /**
- * Send OTP verification email (DEPRECATED: Use sendVerificationEmail)
+ * Send OTP verification email (alias for sendVerificationEmail)
  */
 export async function sendOtpEmail(
   to: string,
   otp: string,
   userName: string
 ): Promise<boolean> {
-  if (!config.email.enabled) {
-    logger.info({ to, otp, userName }, '📧 Email OTP (dev mode - not sent)');
-    return true;
-  }
-
-  try {
-    const transport = await getTransporter();
-    const mailOptions = {
-      from: `HabitEcho <${config.email.from}>`,
-      replyTo: `HabitEcho <${config.email.replyTo}>`,
-      to,
-      subject: '🔐 Verify Your Email - HabitEcho',
-      text: `Your OTP is: ${otp}`,
-      html: `<p>Your OTP is: <strong>${otp}</strong></p>`,
-    };
-
-    await transport.sendMail(mailOptions);
-    return true;
-  } catch (error) {
-    logger.error({ error, to }, 'Failed to send OTP email');
-    return false;
-  }
+  return sendVerificationEmail(to, otp, userName);
 }
 
 /**
- * Verify email transporter is configured correctly
+ * Send a generic email
+ */
+export async function sendEmail(
+  to: string,
+  subject: string,
+  htmlContent: string,
+  textContent?: string
+): Promise<boolean> {
+  if (!config.email.enabled) {
+    logger.info({ to, subject }, '📧 Email (dev mode - not sent)');
+    return true;
+  }
+
+  const result = await sendEmailViaBrevoApi({
+    to,
+    subject,
+    htmlContent,
+    textContent,
+  });
+
+  return result.success;
+}
+
+/**
+ * Verify email service is configured correctly
  */
 export async function verifyEmailConfig(): Promise<boolean> {
   if (!config.email.enabled) {
-    logger.warn('Email service is disabled (missing SMTP configuration)');
+    logger.warn('Email service is disabled (missing BREVO_API_KEY or BREVO_SENDER_EMAIL)');
     return false;
   }
 
   try {
-    const transport = await getTransporter();
-    await transport.verify();
-    logger.info('✅ Email service is configured and ready');
+    const response = await fetch('https://api.brevo.com/v3/account', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'api-key': config.email.apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      logger.error({ status: response.status, error: data }, '❌ Brevo API key is invalid');
+      return false;
+    }
+
+    const account = await response.json() as any;
+    logger.info(
+      { email: account.email, plan: account.plan?.[0]?.type },
+      '✅ Brevo API configured and ready'
+    );
     return true;
-  } catch (error) {
-    logger.error({ error }, '❌ Email configuration verification failed');
+  } catch (error: any) {
+    logger.error({ error: error.message }, '❌ Failed to verify Brevo API configuration');
     return false;
   }
 }

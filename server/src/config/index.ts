@@ -13,12 +13,10 @@ const envSchema = z.object({
   OTP_EXPIRY_MINUTES: z.string().transform(Number).default('10'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
-  // Email configuration (optional in development)
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.string().transform(Number).optional(),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  SMTP_FROM: z.string().optional(),
+  // Brevo Transactional Email API configuration (optional in development)
+  BREVO_API_KEY: z.string().optional(),
+  BREVO_SENDER_EMAIL: z.string().email().optional(),
+  BREVO_SENDER_NAME: z.string().optional(),
 });
 
 const parseEnv = () => {
@@ -85,15 +83,11 @@ export const config = {
   },
 
   email: {
-    enabled: !!(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS && env.SMTP_FROM),
-    host: env.SMTP_HOST || '',
-    port: env.SMTP_PORT || 587,
-    user: env.SMTP_USER || '',
-    pass: env.SMTP_PASS || '',
-    // Brevo rewrites the From address to use their domain (e.g., @brevosend.com)
-    // but keeps Reply-To as specified. This is normal and prevents spam.
-    from: env.SMTP_FROM || 'noreply@habitecho.com',
-    replyTo: env.SMTP_FROM || 'noreply@habitecho.com', // This will be used as Reply-To header
+    enabled: !!(env.BREVO_API_KEY && env.BREVO_SENDER_EMAIL),
+    apiKey: env.BREVO_API_KEY || '',
+    from: env.BREVO_SENDER_EMAIL || 'noreply@habitecho.com',
+    senderName: env.BREVO_SENDER_NAME || 'HabitEcho',
+    replyTo: env.BREVO_SENDER_EMAIL || 'noreply@habitecho.com',
   },
 
   cors: {
