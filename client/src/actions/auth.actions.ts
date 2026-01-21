@@ -232,22 +232,38 @@ export async function verifyOtpAction(
     };
   }
 
-  // Handle login by forwarding cookies
-  const setCookie = response.headers.get('set-cookie');
-  if (setCookie) {
+  // Handle login by forwarding cookies from backend
+  const setCookieHeaders = response.headers.getSetCookie?.() || [];
+  if (setCookieHeaders.length > 0) {
     const cookieStore = await cookies();
-    const cookieParts = setCookie.split(';');
-    const [nameValue] = cookieParts;
-    const [name, ...valueParts] = nameValue.split('=');
-    const value = valueParts.join('=');
-
-    cookieStore.set(name.trim(), value, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7,
-    });
+    
+    for (const cookieHeader of setCookieHeaders) {
+      const cookieParts = cookieHeader.split(';');
+      const [nameValue] = cookieParts;
+      const [name, ...valueParts] = nameValue.split('=');
+      const value = valueParts.join('=');
+      
+      // Parse cookie options
+      const options: any = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+      };
+      
+      // Extract max-age from cookie parts
+      cookieParts.forEach(part => {
+        const trimmed = part.trim().toLowerCase();
+        if (trimmed.startsWith('max-age=')) {
+          const maxAge = parseInt(trimmed.split('=')[1]);
+          if (!isNaN(maxAge)) {
+            options.maxAge = maxAge;
+          }
+        }
+      });
+      
+      cookieStore.set(name.trim(), value, options);
+    }
   }
 
   redirect(ROUTES.DASHBOARD);
@@ -373,23 +389,38 @@ export async function loginAction(
       };
     }
 
-    // Forward the Set-Cookie from the backend response
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) {
+    // Forward all Set-Cookie headers from the backend response
+    const setCookieHeaders = response.headers.getSetCookie?.() || [];
+    if (setCookieHeaders.length > 0) {
       const cookieStore = await cookies();
-      // Parse the cookie - format: habitecho_token=value; Path=/; HttpOnly; ...
-      const cookieParts = setCookie.split(';');
-      const [nameValue] = cookieParts;
-      const [name, ...valueParts] = nameValue.split('=');
-      const value = valueParts.join('='); // Handle values that might contain =
-
-      cookieStore.set(name.trim(), value, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', // Use 'lax' to allow redirects
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      });
+      
+      for (const cookieHeader of setCookieHeaders) {
+        const cookieParts = cookieHeader.split(';');
+        const [nameValue] = cookieParts;
+        const [name, ...valueParts] = nameValue.split('=');
+        const value = valueParts.join('=');
+        
+        // Parse cookie options
+        const options: any = {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax' as const,
+          path: '/',
+        };
+        
+        // Extract max-age from cookie parts
+        cookieParts.forEach(part => {
+          const trimmed = part.trim().toLowerCase();
+          if (trimmed.startsWith('max-age=')) {
+            const maxAge = parseInt(trimmed.split('=')[1]);
+            if (!isNaN(maxAge)) {
+              options.maxAge = maxAge;
+            }
+          }
+        });
+        
+        cookieStore.set(name.trim(), value, options);
+      }
     }
 
     redirect(ROUTES.DASHBOARD);
