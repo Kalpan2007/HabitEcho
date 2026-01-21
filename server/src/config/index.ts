@@ -13,6 +13,10 @@ const envSchema = z.object({
   OTP_EXPIRY_MINUTES: z.string().transform(Number).default('10'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  // Frontend URL for cookie domain (optional, defaults to CORS_ORIGIN)
+  FRONTEND_URL: z.string().optional(),
+  // Allow insecure cookies for local development (set to 'true' to support localhost clients)
+  ALLOW_INSECURE_COOKIES: z.string().transform(val => val === 'true').default('false'),
   // Brevo Transactional Email API configuration (optional in development)
   BREVO_API_KEY: z.string().optional(),
   BREVO_SENDER_EMAIL: z.string().email().optional(),
@@ -55,8 +59,11 @@ export const config = {
     name: 'habitecho_token',
     options: {
       httpOnly: true,
-      secure: true, // Always true for cross-domain cookies
-      sameSite: 'none' as const, // Required for cross-domain (Vercel → Render)
+      // Allow insecure cookies when ALLOW_INSECURE_COOKIES is true (for localhost development)
+      // In production with HTTPS frontends, this should be false and secure will be true
+      secure: !env.ALLOW_INSECURE_COOKIES, 
+      // Use 'lax' when allowing insecure cookies (localhost), 'none' for cross-domain HTTPS
+      sameSite: env.ALLOW_INSECURE_COOKIES ? ('lax' as const) : ('none' as const),
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: '/',
     },
@@ -92,6 +99,10 @@ export const config = {
 
   cors: {
     origin: env.CORS_ORIGIN,
+  },
+
+  frontend: {
+    url: env.FRONTEND_URL || env.CORS_ORIGIN,
   },
 } as const;
 

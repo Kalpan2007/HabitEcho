@@ -93,10 +93,25 @@ export function createApp(): Express {
 
   app.use(
     cors({
-      origin: config.isDevelopment ? true : config.cors.origin,
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, Postman, or curl)
+        if (!origin) return callback(null, true);
+        
+        // In development, allow all origins
+        if (config.isDevelopment) return callback(null, true);
+        
+        // In production, check against allowed origins
+        const allowedOrigins = config.cors.origin.split(',').map(o => o.trim());
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+      exposedHeaders: ['Set-Cookie'],
     })
   );
 
