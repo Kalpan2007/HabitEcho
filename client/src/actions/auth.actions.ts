@@ -26,6 +26,9 @@ async function apiRequest<T>(
   try {
     const cookieStore = await cookies();
     const cookieHeader = cookieStore.toString();
+    
+    // Get access token for Authorization header (cross-origin fallback)
+    const accessToken = cookieStore.get('habitecho_access')?.value;
 
     // Create AbortController with 200s timeout for Render cold starts (can take 50-180s)
     const controller = new AbortController();
@@ -38,6 +41,8 @@ async function apiRequest<T>(
       headers: {
         'Content-Type': 'application/json',
         Cookie: cookieHeader,
+        // Include Authorization header for cross-origin scenarios
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...options.headers,
       },
     }).finally(() => clearTimeout(timeoutId));
@@ -225,48 +230,70 @@ export async function verifyOtpAction(
 
     const data = await response.json();
 
-  if (!response.ok) {
-    return {
-      success: false,
-      message: data.message || 'Invalid or expired code',
-    };
-  }
-
-  // Handle login by forwarding cookies from backend
-  const setCookieHeaders = response.headers.getSetCookie?.() || [];
-  if (setCookieHeaders.length > 0) {
-    const cookieStore = await cookies();
-    
-    for (const cookieHeader of setCookieHeaders) {
-      const cookieParts = cookieHeader.split(';');
-      const [nameValue] = cookieParts;
-      const [name, ...valueParts] = nameValue.split('=');
-      const value = valueParts.join('=');
-      
-      // Parse cookie options
-      const options: any = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax' as const,
-        path: '/',
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || 'Invalid or expired code',
       };
-      
-      // Extract max-age from cookie parts
-      cookieParts.forEach(part => {
-        const trimmed = part.trim().toLowerCase();
-        if (trimmed.startsWith('max-age=')) {
-          const maxAge = parseInt(trimmed.split('=')[1]);
-          if (!isNaN(maxAge)) {
-            options.maxAge = maxAge;
-          }
-        }
-      });
-      
-      cookieStore.set(name.trim(), value, options);
     }
-  }
 
-  redirect(ROUTES.DASHBOARD);
+    // Store tokens in Next.js cookies for cross-origin scenarios
+    // This works because these cookies are set on localhost domain
+    const cookieStore = await cookies();
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+    };
+
+    // Save access token from response body
+    if (data.data?.accessToken) {
+      cookieStore.set('habitecho_access', data.data.accessToken, cookieOptions);
+    }
+
+    // Save refresh token from response body
+    if (data.data?.refreshToken) {
+      cookieStore.set('habitecho_refresh', data.data.refreshToken, {
+        ...cookieOptions,
+        maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+      });
+    }
+
+    // Also try to forward any Set-Cookie headers from backend (for same-origin scenarios)
+    const setCookieHeaders = response.headers.getSetCookie?.() || [];
+    if (setCookieHeaders.length > 0 && !data.data?.accessToken) {
+      for (const cookieHeader of setCookieHeaders) {
+        const cookieParts = cookieHeader.split(';');
+        const [nameValue] = cookieParts;
+        const [name, ...valueParts] = nameValue.split('=');
+        const value = valueParts.join('=');
+        
+        // Parse cookie options
+        const options: any = {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax' as const,
+          path: '/',
+        };
+        
+        // Extract max-age from cookie parts
+        cookieParts.forEach(part => {
+          const trimmed = part.trim().toLowerCase();
+          if (trimmed.startsWith('max-age=')) {
+            const maxAge = parseInt(trimmed.split('=')[1]);
+            if (!isNaN(maxAge)) {
+              options.maxAge = maxAge;
+            }
+          }
+        });
+        
+        cookieStore.set(name.trim(), value, options);
+      }
+    }
+
+    redirect(ROUTES.DASHBOARD);
   } catch (error) {
     // Re-throw redirect errors - they are expected behavior
     if (isRedirectError(error)) {

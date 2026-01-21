@@ -4,6 +4,26 @@ import { UnauthorizedError } from '../utils/errors.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 
 /**
+ * Extract token from request
+ * Priority: 1. Cookie (habitecho_access), 2. Authorization header (Bearer token)
+ */
+function extractToken(req: Request): string | null {
+  // First, try to get token from cookie
+  const cookieToken = req.cookies.habitecho_access;
+  if (cookieToken) {
+    return cookieToken;
+  }
+
+  // Fallback: Check Authorization header (for cross-origin localhost development)
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+
+  return null;
+}
+
+/**
  * Authentication middleware
  */
 export async function authenticate(
@@ -12,7 +32,7 @@ export async function authenticate(
   next: NextFunction
 ): Promise<void> {
   try {
-    const token = req.cookies.habitecho_access;
+    const token = extractToken(req);
 
     if (!token) {
       throw new UnauthorizedError('Authentication required');
@@ -47,7 +67,7 @@ export async function optionalAuthenticate(
   next: NextFunction
 ): Promise<void> {
   try {
-    const token = req.cookies.habitecho_access;
+    const token = extractToken(req);
 
     if (token) {
       const payload = verifyToken(token);

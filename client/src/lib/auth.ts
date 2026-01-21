@@ -44,6 +44,9 @@ export async function getCurrentUser(): Promise<User | null> {
   try {
     const cookieStore = await cookies();
     const cookieHeader = cookieStore.toString();
+    
+    // Get access token for Authorization header (cross-origin fallback)
+    const accessToken = cookieStore.get('habitecho_access')?.value;
 
     // console.log('[Auth] Checking current user, cookies:', cookieHeader ? 'Present' : 'Missing');
 
@@ -52,6 +55,8 @@ export async function getCurrentUser(): Promise<User | null> {
       cache: 'no-store',
       headers: {
         Cookie: cookieHeader,
+        // Include Authorization header for cross-origin scenarios
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
     });
 

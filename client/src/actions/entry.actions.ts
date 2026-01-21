@@ -16,6 +16,9 @@ async function apiRequest<T>(
   try {
     const cookieStore = await cookies();
     const cookieHeader = cookieStore.toString();
+    
+    // Get access token for Authorization header (cross-origin fallback)
+    const accessToken = cookieStore.get('habitecho_access')?.value;
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
@@ -23,6 +26,8 @@ async function apiRequest<T>(
       headers: {
         'Content-Type': 'application/json',
         Cookie: cookieHeader,
+        // Include Authorization header for cross-origin scenarios
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...options.headers,
       },
     });

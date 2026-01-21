@@ -17,7 +17,9 @@ services:
       - key: COOKIE_SECRET
         generateValue: true
       - key: CORS_ORIGIN
-        value: https://your-frontend-url.com
+        value: http://localhost:3000,https://your-frontend-url.com
+      - key: ALLOW_INSECURE_COOKIES
+        value: true
 
 databases:
   - name: habitecho-db

@@ -32,14 +32,14 @@ export function HabitPerformanceCard({ habit, performance }: HabitPerformanceCar
               <FrequencyBadge frequency={habit.frequency} />
               {habit.frequency === 'WEEKLY' && habit.scheduleDays && (
                 <p className="text-xs text-gray-500">
-                  {formatScheduleDays(habit.scheduleDays)}
+                  {formatScheduleDays(habit.frequency, habit.scheduleDays)}
                 </p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2 text-sm">
-            <span className={momentumDisplay.textColor}>{momentumDisplay.icon}</span>
-            <span className="font-semibold text-gray-700">{momentumDisplay.text}</span>
+            <span className={momentumDisplay.color}>{momentumDisplay.icon}</span>
+            <span className="font-semibold text-gray-700">{momentumDisplay.label}</span>
           </div>
         </div>
       </div>

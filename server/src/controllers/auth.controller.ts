@@ -46,7 +46,12 @@ export async function login(
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
-    sendSuccess(res, { user: result.user }, 'Login successful');
+    // Also return tokens in body for cross-origin scenarios where cookies don't work
+    sendSuccess(res, { 
+      user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }, 'Login successful');
   } catch (error) {
     next(error);
   }
@@ -139,7 +144,12 @@ export async function verifyOtp(
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
-    sendSuccess(res, { user: result.user }, 'Email verified and logged in successfully');
+    // Also return tokens in body for cross-origin scenarios where cookies don't work
+    sendSuccess(res, { 
+      user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }, 'Email verified and logged in successfully');
   } catch (error) {
     next(error);
   }
