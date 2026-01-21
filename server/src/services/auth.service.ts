@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { prisma } from '../config/database.js';
 import { hashPassword, comparePassword } from '../utils/crypto.js';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt.js';
+import { logger } from '../utils/logger.js';
 import {
   ConflictError,
   NotFoundError,
@@ -99,11 +100,21 @@ export async function signup(input: SignupInput): Promise<{ message: string; ema
     },
   });
 
-  // Send OTP email
-  await sendVerificationEmail(email, otp, fullName);
+  // Send OTP email with error handling
+  const emailSent = await sendVerificationEmail(email, otp, fullName);
+  
+  if (!emailSent) {
+    logger.warn(
+      { email, fullName }, 
+      'User created but verification email failed to send. User may need to resend OTP.'
+    );
+    // Don't fail the signup, user can resend OTP
+  }
 
   return {
-    message: 'Verification code sent to your email',
+    message: emailSent 
+      ? 'Verification code sent to your email' 
+      : 'Account created! Please use "Resend Code" if you didn\'t receive the email.',
     email
   };
 }
@@ -168,9 +179,15 @@ export async function resendOtp(email: string): Promise<{ message: string }> {
     },
   });
 
-  await sendVerificationEmail(email, otp, user.fullName);
+  // Send OTP email with error handling
+  const emailSent = await sendVerificationEmail(email, otp, user.fullName);
+  
+  if (!emailSent) {
+    logger.error({ email }, 'Failed to send verification email on resend');
+    throw new Error('Failed to send verification email. Please try again in a moment.');
+  }
 
-  return { message: 'New verification code sent' };
+  return { message: 'New verification code sent to your email' };
 }
 
 

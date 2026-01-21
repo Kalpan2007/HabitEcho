@@ -1,6 +1,39 @@
-# ✅ Connection Pooling - Quick Setup Checklist
+# ✅ Environment Variables Setup for Render
 
-## 🎯 What Changed
+## 🎯 Critical Settings for Production
+
+### 📧 Email Configuration (Brevo/Sendinblue)
+
+**Important Notes:**
+- ⚠️ Brevo **rewrites the From address** to use their domain (e.g., `@brevosend.com`) to prevent spam
+- ✅ This is **NORMAL** and expected behavior for Brevo
+- ✅ The **Reply-To** header will still show your email correctly
+- ✅ Recipients will reply to YOUR email, not Brevo's
+
+**Required Environment Variables:**
+
+```env
+# SMTP Configuration
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_USER=<your-brevo-login-email>
+SMTP_PASS=<your-brevo-smtp-api-key>
+SMTP_FROM=<your-verified-sender-email>
+
+# Example:
+# SMTP_FROM=your-app@yourdomain.com
+# Or if using Gmail verified in Brevo:
+# SMTP_FROM=youremail@gmail.com
+```
+
+**How Brevo Handles Email Headers:**
+- **From header** (what you see in inbox): `your-app@10474305.brevosend.com` ← Rewritten by Brevo
+- **Reply-To header**: `your-app@yourdomain.com` ← Your actual email
+- **When user clicks Reply**: Email goes to YOUR address, not Brevo's
+
+---
+
+## 🎯 Database Connection Pooling
 
 Your project now uses **two database URLs** for optimal performance:
 

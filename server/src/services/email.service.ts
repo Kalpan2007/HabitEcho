@@ -8,11 +8,13 @@ import { logger } from '../utils/logger.js';
 // ============================================
 
 let transporter: Transporter | null = null;
+let lastVerifyTime: number = 0;
+const VERIFY_INTERVAL = 5 * 60 * 1000; // Verify connection every 5 minutes
 
 /**
- * Get or create the email transporter
+ * Get or create the email transporter with connection verification
  */
-function getTransporter(): Transporter {
+async function getTransporter(): Promise<Transporter> {
   if (!transporter) {
     transporter = nodemailer.createTransport({
       host: config.email.host,
@@ -22,8 +24,41 @@ function getTransporter(): Transporter {
         user: config.email.user,
         pass: config.email.pass,
       },
+      // Connection pooling for better performance
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
+      // Timeouts
+      connectionTimeout: 60000, // 60 seconds for cold starts
+      greetingTimeout: 30000,
+      socketTimeout: 60000,
     });
+
+    // Verify connection on first creation
+    try {
+      await transporter.verify();
+      logger.info('✅ SMTP connection established and verified');
+      lastVerifyTime = Date.now();
+    } catch (error) {
+      logger.error({ error }, '❌ SMTP connection failed');
+      transporter = null;
+      throw error;
+    }
+  } else {
+    // Periodically verify the connection is still alive
+    const now = Date.now();
+    if (now - lastVerifyTime > VERIFY_INTERVAL) {
+      try {
+        await transporter.verify();
+        lastVerifyTime = now;
+      } catch (error) {
+        logger.warn({ error }, '⚠️ SMTP connection lost, recreating...');
+        transporter = null;
+        return getTransporter(); // Recursively recreate
+      }
+    }
   }
+
   return transporter;
 }
 
@@ -136,7 +171,7 @@ function generateReminderEmailHtml(userName: string, habitName: string, habitId:
 // ============================================
 
 /**
- * Send email verification link
+ * Send email verification link with retry logic
  */
 export async function sendVerificationEmail(
   to: string,
@@ -148,26 +183,66 @@ export async function sendVerificationEmail(
     return true;
   }
 
-  try {
-    const transport = getTransporter();
-    const mailOptions = {
-      from: config.email.from,
-      to,
-      subject: '🔐 Verify Your Email - HabitEcho',
-      html: generateVerificationEmailHtml(token, userName),
-    };
+  const maxRetries = 3;
+  let lastError: any;
 
-    const info = await transport.sendMail(mailOptions);
-    logger.info({ messageId: info.messageId, to }, 'Verification email sent');
-    return true;
-  } catch (error) {
-    logger.error({ error, to }, 'Failed to send verification email');
-    return false;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const transport = await getTransporter();
+      const mailOptions = {
+        from: `HabitEcho <${config.email.from}>`, // Proper format with name
+        replyTo: `HabitEcho <${config.email.replyTo}>`, // Reply-To header for user replies
+        to,
+        subject: '🔐 Verify Your Email - HabitEcho',
+        html: generateVerificationEmailHtml(token, userName),
+      };
+
+      const info = await transport.sendMail(mailOptions);
+      logger.info(
+        { 
+          messageId: info.messageId, 
+          to, 
+          attempt,
+          accepted: info.accepted,
+          rejected: info.rejected 
+        }, 
+        '✅ Verification email sent successfully'
+      );
+      return true;
+    } catch (error: any) {
+      lastError = error;
+      logger.warn(
+        { 
+          error: error.message, 
+          to, 
+          attempt, 
+          maxRetries,
+          code: error.code,
+          command: error.command
+        }, 
+        `⚠️ Failed to send verification email (attempt ${attempt}/${maxRetries})`
+      );
+
+      // Wait before retry (exponential backoff)
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Reset transporter to force reconnection
+        transporter = null;
+      }
+    }
   }
+
+  logger.error(
+    { error: lastError, to, maxRetries }, 
+    '❌ Failed to send verification email after all retries'
+  );
+  return false;
 }
 
 /**
- * Send habit reminder email
+ * Send habit reminder email with retry logic
  */
 export async function sendReminderEmail(
   to: string,
@@ -180,22 +255,36 @@ export async function sendReminderEmail(
     return true;
   }
 
-  try {
-    const transport = getTransporter();
-    const mailOptions = {
-      from: config.email.from,
-      to,
-      subject: `⏰ Reminder: ${habitName}`,
-      html: generateReminderEmailHtml(userName, habitName, habitId),
-    };
+  const maxRetries = 2; // Fewer retries for reminders
+  let lastError: any;
 
-    const info = await transport.sendMail(mailOptions);
-    logger.info({ messageId: info.messageId, to, habitName }, 'Reminder email sent');
-    return true;
-  } catch (error) {
-    logger.error({ error, to, habitName }, 'Failed to send reminder email');
-    return false;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const transport = await getTransporter();
+      const mailOptions = {
+        from: `HabitEcho <${config.email.from}>`,
+        replyTo: `HabitEcho <${config.email.replyTo}>`,
+        to,
+        subject: `⏰ Reminder: ${habitName}`,
+        html: generateReminderEmailHtml(userName, habitName, habitId),
+      };
+
+      const info = await transport.sendMail(mailOptions);
+      logger.info({ messageId: info.messageId, to, habitName, attempt }, '✅ Reminder email sent');
+      return true;
+    } catch (error: any) {
+      lastError = error;
+      logger.warn({ error: error.message, to, habitName, attempt }, `⚠️ Failed to send reminder (attempt ${attempt}/${maxRetries})`);
+
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        transporter = null;
+      }
+    }
   }
+
+  logger.error({ error: lastError, to, habitName }, '❌ Failed to send reminder email');
+  return false;
 }
 
 /**
@@ -212,9 +301,10 @@ export async function sendOtpEmail(
   }
 
   try {
-    const transport = getTransporter();
+    const transport = await getTransporter();
     const mailOptions = {
-      from: config.email.from,
+      from: `HabitEcho <${config.email.from}>`,
+      replyTo: `HabitEcho <${config.email.replyTo}>`,
       to,
       subject: '🔐 Verify Your Email - HabitEcho',
       text: `Your OTP is: ${otp}`,
@@ -239,12 +329,12 @@ export async function verifyEmailConfig(): Promise<boolean> {
   }
 
   try {
-    const transport = getTransporter();
+    const transport = await getTransporter();
     await transport.verify();
-    logger.info('Email service is configured and ready');
+    logger.info('✅ Email service is configured and ready');
     return true;
   } catch (error) {
-    logger.error({ error }, 'Email configuration verification failed');
+    logger.error({ error }, '❌ Email configuration verification failed');
     return false;
   }
 }

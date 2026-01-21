@@ -90,7 +90,10 @@ export const config = {
     port: env.SMTP_PORT || 587,
     user: env.SMTP_USER || '',
     pass: env.SMTP_PASS || '',
-    from: env.SMTP_FROM || 'HabitEcho <noreply@habitecho.com>',
+    // Brevo rewrites the From address to use their domain (e.g., @brevosend.com)
+    // but keeps Reply-To as specified. This is normal and prevents spam.
+    from: env.SMTP_FROM || 'noreply@habitecho.com',
+    replyTo: env.SMTP_FROM || 'noreply@habitecho.com', // This will be used as Reply-To header
   },
 
   cors: {
