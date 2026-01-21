@@ -7,8 +7,9 @@ import type { User, ApiResponse } from '@/types';
 // SERVER-SIDE AUTH UTILITIES
 // ============================================
 
-// Timeout for auth requests (60 seconds to handle Render cold starts)
-const AUTH_TIMEOUT_MS = 60 * 1000;
+// Timeout for auth requests (200 seconds to handle Render cold starts)
+// Render free tier can take 50-180 seconds to wake up from sleep
+const AUTH_TIMEOUT_MS = 200 * 1000;
 
 /**
  * Helper to create a fetch with timeout for server-side requests

@@ -27,15 +27,20 @@ async function apiRequest<T>(
     const cookieStore = await cookies();
     const cookieHeader = cookieStore.toString();
 
+    // Create AbortController with 200s timeout for Render cold starts (can take 50-180s)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 200 * 1000);
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       credentials: 'include',
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         Cookie: cookieHeader,
         ...options.headers,
       },
-    });
+    }).finally(() => clearTimeout(timeoutId));
 
     // Check if response is JSON
     const contentType = response.headers.get('content-type');
@@ -64,9 +69,18 @@ async function apiRequest<T>(
       message: data.message,
     };
   } catch (error) {
+    // Handle timeout errors specifically
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        message: 'Request timed out. The server is starting up (can take up to 3 minutes on Render free tier). Please wait and try again in a moment.',
+      };
+    }
+    
+    // Handle other errors
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Network error',
+      message: error instanceof Error ? error.message : 'Network error. Please check your connection and try again.',
     };
   }
 }

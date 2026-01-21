@@ -19,8 +19,9 @@ import type {
 // BASE FETCH HELPER
 // ============================================
 
-// Timeout for API requests (60 seconds to handle Render cold starts)
-const API_TIMEOUT_MS = 60 * 1000;
+// Timeout for API requests (200 seconds to handle Render cold starts on free tier)
+// Render free tier can take 50-180 seconds to wake up from sleep
+const API_TIMEOUT_MS = 200 * 1000;
 
 export interface ApiOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
@@ -86,7 +87,7 @@ async function apiFetch<T>(
     // Handle timeout/abort errors
     if (error instanceof Error && error.name === 'AbortError') {
       throw new ApiError(
-        'Request timed out. The server may be starting up (Render cold start). Please try again.',
+        'Server is waking up (Render free tier). This can take up to 3 minutes on first request. Please wait and try again.',
         408,
         'REQUEST_TIMEOUT'
       );
