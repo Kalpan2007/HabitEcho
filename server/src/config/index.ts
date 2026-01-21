@@ -55,8 +55,8 @@ export const config = {
     name: 'habitecho_token',
     options: {
       httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: env.NODE_ENV === 'production' ? ('strict' as const) : ('lax' as const),
+      secure: true, // Always true for cross-domain cookies
+      sameSite: 'none' as const, // Required for cross-domain (Vercel → Render)
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: '/',
     },
