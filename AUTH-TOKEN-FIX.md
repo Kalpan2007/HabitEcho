@@ -2,7 +2,12 @@
 
 ## 🎯 Problem Summary
 
-After logging in successfully, creating a habit fails with "Invalid token" error in production, but works fine locally.
+After logging in successfully, creating a habit fails with "Invalid token" error when using **deployed backend (Render HTTPS)** with **local frontend (localhost:3000 HTTP)**.
+
+**Setup:**
+- Backend: `https://habitecho.onrender.com/api/v1` (HTTPS - Deployed on Render)
+- Frontend: `http://localhost:3000` (HTTP - Running locally)
+- Issue: Cross-protocol cookie authentication failing
 
 ## 🔍 Root Cause Analysis
 
@@ -28,10 +33,11 @@ After logging in successfully, creating a habit fails with "Invalid token" error
 - No cookie security restrictions
 - CORS not enforced for same-origin
 
-### Why It Failed in Production:
-- Cross-origin setup (different domains)
-- Strict cookie security requirements
-- CORS blocking requests
+### Why It Failed with Deployed Backend + Local Frontend:
+- **Cross-protocol**: HTTPS backend → HTTP frontend
+- With `ALLOW_INSECURE_COOKIES=false`: cookies require `secure: true` which blocks HTTP
+- HTTP localhost cannot receive secure cookies from HTTPS backend
+- Tokens fail to be sent/stored
 
 ---
 
@@ -42,26 +48,29 @@ After logging in successfully, creating a habit fails with "Invalid token" error
 ```env
 # Before:
 CORS_ORIGIN="http://localhost:3000"
-
-# After:
+ (for testing deployed backend with local frontend):
 CORS_ORIGIN="http://localhost:3000,https://habitecho.onrender.com"
 FRONTEND_URL="https://habitecho.onrender.com"
+ALLOW_INSECURE_COOKIES="true"  # ← CRITICAL for localhost:3000 testing!o.onrender.com"
 ALLOW_INSECURE_COOKIES="false"
 ```
 
 **What this does:**
-- `CORS_ORIGIN`: Allows requests from both local and production frontend
+- `CORS_ORIGIN`: Allows requests from localhost:3000 (local) and production frontend
 - `FRONTEND_URL`: Used for email links and as fallback
-- `ALLOW_INSECURE_COOKIES`: 
-  - `false` = Production mode → `secure: true`, `sameSite: 'none'`
-  - `true` = Development mode → `secure: false`, `sameSite: 'lax'`
+- `ALLOW_INSECURE_COOKIES="true"`: **CRITICAL for localhost testing!**
+  - `true` = Allows cookies from HTTPS backend → HTTP localhost
+  - Sets `secure: false` (works with HTTP localhost)
+  - Sets `sameSite: 'lax'` (better browser compatibility)
+  - **Must be `true` when testing with localhost:3000**
+  - Change to `false` only when BOTH frontend and backend are HTTPS in production
 
 ### 2. Render Deployment Config (`render.yaml`)
-
-```yaml
-- key: CORS_ORIGIN
-  value: https://habitecho.onrender.com
+://localhost:3000,https://habitecho.onrender.com
 - key: FRONTEND_URL
+  value: https://habitecho.onrender.com
+- key: ALLOW_INSECURE_COOKIES
+  value: true  # ← For localhost:3000 testingD_URL
   value: https://habitecho.onrender.com
 - key: ALLOW_INSECURE_COOKIES
   value: false
