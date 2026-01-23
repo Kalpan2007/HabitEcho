@@ -30,7 +30,7 @@ export function OrganizationSchema() {
     url: SEO_CONFIG.brand.url,
     logo: {
       "@type": "ImageObject",
-      url: `${SEO_CONFIG.brand.url}/logo.png`,
+      url: `${SEO_CONFIG.brand.url}/mental-health.png`,
       width: "512",
       height: "512",
     },

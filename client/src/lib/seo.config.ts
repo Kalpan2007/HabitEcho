@@ -69,7 +69,7 @@ export const SEO_CONFIG = {
     "@type": "Organization",
     name: "HabitEcho",
     url: "https://habitecho.vercel.app",
-    logo: "https://habitecho.vercel.app/logo.png",
+    logo: "https://habitecho.vercel.app/mental-health.png",
     description: "Enterprise-grade habit tracking and behavioral analytics platform",
     foundingDate: "2026",
     sameAs: [

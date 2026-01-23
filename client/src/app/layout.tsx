@@ -37,6 +37,17 @@ export const metadata: Metadata = {
     template: "%s | HabitEcho",
   },
   description: SEO_CONFIG.defaultMetadata.description,
+  icons: {
+    icon: [
+      { url: "/mental-health.png", sizes: "any" },
+      { url: "/mental-health.png", sizes: "32x32", type: "image/png" },
+      { url: "/mental-health.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [
+      { url: "/mental-health.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/mental-health.png",
+  },
   keywords: SEO_CONFIG.defaultMetadata.keywords,
   authors: [{ name: SEO_CONFIG.brand.name, url: SEO_CONFIG.brand.url }],
   creator: SEO_CONFIG.brand.name,
@@ -69,9 +80,9 @@ export const metadata: Metadata = {
     description: SEO_CONFIG.defaultMetadata.description,
     images: [
       {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
+        url: "/mental-health.png",
+        width: 512,
+        height: 512,
         alt: "HabitEcho - Precision Habit Intelligence Platform",
         type: "image/png",
       },
@@ -83,7 +94,7 @@ export const metadata: Metadata = {
     creator: SEO_CONFIG.social.twitter,
     title: SEO_CONFIG.defaultMetadata.title,
     description: SEO_CONFIG.defaultMetadata.description,
-    images: ["/og-image.png"],
+    images: ["/mental-health.png"],
   },
   verification: {
     google: "D-reX19vKYdgckNJc-ciRCMCllKmOnixEpWjuVdhN3U",
