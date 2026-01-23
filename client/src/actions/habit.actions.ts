@@ -21,6 +21,11 @@ async function apiRequest<T>(
     
     // Get access token for Authorization header (cross-origin fallback)
     const accessToken = cookieStore.get('habitecho_access')?.value;
+    
+    // Debug logging
+    console.log('[apiRequest] Endpoint:', endpoint);
+    console.log('[apiRequest] Access token present:', !!accessToken);
+    console.log('[apiRequest] Token length:', accessToken?.length || 0);
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
@@ -35,6 +40,11 @@ async function apiRequest<T>(
     });
 
     const data = await response.json();
+    
+    // Debug logging
+    if (!response.ok) {
+      console.log('[apiRequest] Request failed:', response.status, data.message);
+    }
 
     if (!response.ok) {
       return {
@@ -50,6 +60,7 @@ async function apiRequest<T>(
       message: data.message,
     };
   } catch (error) {
+    console.error('[apiRequest] Error:', error);
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Network error',

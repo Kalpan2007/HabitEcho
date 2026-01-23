@@ -240,25 +240,44 @@ export async function verifyOtpAction(
     // Store tokens in Next.js cookies for cross-origin scenarios
     // This works because these cookies are set on localhost domain
     const cookieStore = await cookies();
-    const cookieOptions = {
-      httpOnly: true,
+    
+    // Access token: NOT httpOnly so client-side JavaScript can read it
+    // This is needed because client-side fetch needs to send Authorization header
+    // for cross-origin requests where cookies won't be sent automatically
+    const accessTokenOptions = {
+      httpOnly: false, // Allow client-side access for Authorization header
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       path: '/',
       maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
     };
+    
+    // Refresh token: Keep httpOnly for security
+    const refreshTokenOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+    };
+
+    // Debug: Log what we received from backend
+    console.log('[VerifyOTP] Response data:', JSON.stringify(data.data, null, 2));
+    console.log('[VerifyOTP] AccessToken present:', !!data.data?.accessToken);
+    console.log('[VerifyOTP] AccessToken length:', data.data?.accessToken?.length || 0);
 
     // Save access token from response body
     if (data.data?.accessToken) {
-      cookieStore.set('habitecho_access', data.data.accessToken, cookieOptions);
+      console.log('[VerifyOTP] Saving access token to cookie...');
+      cookieStore.set('habitecho_access', data.data.accessToken, accessTokenOptions);
+      console.log('[VerifyOTP] Access token saved!');
+    } else {
+      console.log('[VerifyOTP] WARNING: No access token in response!');
     }
 
     // Save refresh token from response body
     if (data.data?.refreshToken) {
-      cookieStore.set('habitecho_refresh', data.data.refreshToken, {
-        ...cookieOptions,
-        maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
-      });
+      cookieStore.set('habitecho_refresh', data.data.refreshToken, refreshTokenOptions);
     }
 
     // Also try to forward any Set-Cookie headers from backend (for same-origin scenarios)

@@ -10,16 +10,25 @@ import type { AuthenticatedRequest } from '../types/index.js';
 function extractToken(req: Request): string | null {
   // First, try to get token from cookie
   const cookieToken = req.cookies.habitecho_access;
+  
+  // Debug logging
+  console.log('[Auth] Cookie token present:', !!cookieToken);
+  console.log('[Auth] Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
+  
   if (cookieToken) {
+    console.log('[Auth] Using cookie token, length:', cookieToken.length);
     return cookieToken;
   }
 
   // Fallback: Check Authorization header (for cross-origin localhost development)
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.slice(7);
+    const token = authHeader.slice(7);
+    console.log('[Auth] Using Bearer token, length:', token.length);
+    return token;
   }
 
+  console.log('[Auth] No token found!');
   return null;
 }
 

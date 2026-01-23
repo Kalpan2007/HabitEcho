@@ -23,6 +23,22 @@ import type {
 // Render free tier can take 50-180 seconds to wake up from sleep
 const API_TIMEOUT_MS = 200 * 1000;
 
+/**
+ * Get access token from cookie (client-side)
+ */
+function getAccessToken(): string | null {
+  if (typeof document === 'undefined') return null;
+  
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'habitecho_access') {
+      return decodeURIComponent(value);
+    }
+  }
+  return null;
+}
+
 export interface ApiOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
   timeout?: number; // Custom timeout in milliseconds
@@ -60,6 +76,9 @@ async function apiFetch<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+  // Get access token for Authorization header (cross-origin support)
+  const accessToken = getAccessToken();
+
   try {
     const response = await fetch(url, {
       credentials: 'include', // Always send HttpOnly cookies
@@ -68,6 +87,8 @@ async function apiFetch<T>(
       ...fetchOptions,
       headers: {
         'Content-Type': 'application/json',
+        // Include Authorization header for cross-origin scenarios
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...fetchOptions.headers,
       },
     });
