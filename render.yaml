@@ -17,11 +17,11 @@ services:
       - key: COOKIE_SECRET
         generateValue: true
       - key: CORS_ORIGIN
-        value: https://habitecho.onrender.com
+        value: http://localhost:3000,https://habitecho.onrender.com
       - key: FRONTEND_URL
         value: https://habitecho.onrender.com
       - key: ALLOW_INSECURE_COOKIES
-        value: false
+        value: true
 
 databases:
   - name: habitecho-db
