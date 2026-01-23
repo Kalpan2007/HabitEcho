@@ -16,13 +16,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = SEO_CONFIG.brand.url;
   const currentDate = new Date();
 
-  // Static pages from SEO_ROUTES configuration
-  const staticRoutes = Object.values(SEO_ROUTES).map((route) => ({
-    url: `${baseUrl}${route.path}`,
-    lastModified: currentDate,
-    changeFrequency: route.changefreq as 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never',
-    priority: route.priority,
-  }));
+  // Private paths to exclude from sitemap (not for search engines)
+  const excludePaths = ['/dashboard', '/auth', '/api'];
+
+  // Static pages from SEO_ROUTES configuration (only public pages)
+  const staticRoutes = Object.values(SEO_ROUTES)
+    .filter((route) => !excludePaths.some((exclude) => route.path.startsWith(exclude)))
+    .map((route) => ({
+      url: `${baseUrl}${route.path}`,
+      lastModified: currentDate,
+      changeFrequency: route.changefreq as 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never',
+      priority: route.priority,
+    }));
 
   // Feature pages - High priority for SEO
   const featureRoutes: MetadataRoute.Sitemap = [
