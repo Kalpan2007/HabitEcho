@@ -12,7 +12,7 @@ export const SEO_CONFIG = {
     name: "HabitEcho",
     tagline: "Precision Habit Intelligence",
     description: "Enterprise-grade habit tracking platform with predictive analytics, streak monitoring, and behavioral insights for building consistent daily routines.",
-    url: "https://habitecho.onrender.com",
+    url: "https://habitecho.vercel.app",
     email: "hello@habitecho.com",
     founded: "2026",
   },
@@ -68,8 +68,8 @@ export const SEO_CONFIG = {
   organization: {
     "@type": "Organization",
     name: "HabitEcho",
-    url: "https://habitecho.onrender.com",
-    logo: "https://habitecho.onrender.com/logo.png",
+    url: "https://habitecho.vercel.app",
+    logo: "https://habitecho.vercel.app/logo.png",
     description: "Enterprise-grade habit tracking and behavioral analytics platform",
     foundingDate: "2026",
     sameAs: [

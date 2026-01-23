@@ -6,7 +6,7 @@
  * Optimized for Google Search Console indexing
  * 
  * Next.js 15 App Router: Use app/sitemap.ts for dynamic sitemap generation
- * Access at: https://habitecho.onrender.com/sitemap.xml
+ * Access at: https://habitecho.vercel.app/sitemap.xml
  */
 
 import { MetadataRoute } from 'next';

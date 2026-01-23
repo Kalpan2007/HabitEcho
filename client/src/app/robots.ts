@@ -5,7 +5,7 @@
  * Optimized for Google Search Console and maximum indexation efficiency
  * 
  * Next.js 15 App Router: Use app/robots.ts for dynamic robots.txt generation
- * Access at: https://habitecho.onrender.com/robots.txt
+ * Access at: https://habitecho.vercel.app/robots.txt
  * 
  * Configuration:
  * - Allow all public pages for indexing

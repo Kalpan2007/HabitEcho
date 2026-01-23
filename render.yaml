@@ -17,9 +17,9 @@ services:
       - key: COOKIE_SECRET
         generateValue: true
       - key: CORS_ORIGIN
-        value: http://localhost:3000,https://habitecho.onrender.com
+        value: http://localhost:3000,https://habitecho.vercel.app
       - key: FRONTEND_URL
-        value: https://habitecho.onrender.com
+        value: https://habitecho.vercel.app
       - key: ALLOW_INSECURE_COOKIES
         value: true
 
