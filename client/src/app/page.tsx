@@ -14,15 +14,15 @@ const display = Plus_Jakarta_Sans({
 
 // SEO-optimized metadata for homepage
 export const metadata: Metadata = {
-  title: SEO_ROUTES.HOME.title,
-  description: SEO_ROUTES.HOME.description,
-  keywords: 'habit tracker, habit tracking app, daily habits, habit building, streak tracker, productivity habits, behavioral analytics, routine tracking, personal growth, self-improvement',
+  title: 'HabitEcho — Best Free Habit Tracker App for Daily Routines & Goals',
+  description: 'Build lasting habits with HabitEcho, the best free habit tracker app. Track daily habits, monitor streaks, get behavioral analytics, and achieve your goals. Start your habit journey today!',
+  keywords: 'habit tracker, best habit tracker, free habit tracker, habit tracking app, daily habits, habit building, streak tracker, productivity habits, behavioral analytics, routine tracking, personal growth, self-improvement, goal tracker, habit app',
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: SEO_ROUTES.HOME.title,
-    description: SEO_ROUTES.HOME.description,
+    title: 'HabitEcho — Best Free Habit Tracker App for Daily Routines',
+    description: 'Track daily habits, monitor streaks, and build better routines with powerful analytics. Free habit tracker with heatmaps & insights.',
     url: '/',
     type: 'website',
   },

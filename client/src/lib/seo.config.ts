@@ -12,7 +12,7 @@ export const SEO_CONFIG = {
     name: "HabitEcho",
     tagline: "Precision Habit Intelligence",
     description: "Enterprise-grade habit tracking platform with predictive analytics, streak monitoring, and behavioral insights for building consistent daily routines.",
-    url: "https://habitecho.com", // Update with production URL
+    url: "https://habitecho.onrender.com",
     email: "hello@habitecho.com",
     founded: "2026",
   },
@@ -24,8 +24,12 @@ export const SEO_CONFIG = {
       "habit tracker",
       "habit tracking",
       "habit tracking app",
+      "best habit tracker",
+      "free habit tracker",
       "daily habits",
       "habit building",
+      "habit tracker online",
+      "habit tracker web app",
     ],
     secondary: [
       "behavioral habits",
@@ -64,22 +68,22 @@ export const SEO_CONFIG = {
   organization: {
     "@type": "Organization",
     name: "HabitEcho",
-    url: "https://habitecho.com",
-    logo: "https://habitecho.com/logo.png",
+    url: "https://habitecho.onrender.com",
+    logo: "https://habitecho.onrender.com/logo.png",
     description: "Enterprise-grade habit tracking and behavioral analytics platform",
     foundingDate: "2026",
     sameAs: [
-      "https://github.com/habitecho",
-      "https://linkedin.com/company/habitecho",
+      "https://github.com/Kalpan2007/HabitEcho",
+      "https://linkedin.com/in/kalpan-kaneriya",
       "https://twitter.com/HabitEcho",
     ],
   },
 
   // Default Metadata Templates
   defaultMetadata: {
-    title: "HabitEcho — Precision Habit Intelligence & Daily Routine Tracker",
-    description: "Build lasting habits with HabitEcho's enterprise-grade tracking platform. Get predictive analytics, streak monitoring, heatmaps, and behavioral insights to optimize your daily routines.",
-    keywords: "habit tracker, habit tracking app, daily habits, habit building, streak tracker, productivity habits, behavioral analytics, routine tracking",
+    title: "HabitEcho — Best Free Habit Tracker App | Daily Routine & Goal Tracker",
+    description: "Track daily habits, build routines, and achieve goals with HabitEcho. Free habit tracker with streak monitoring, analytics, heatmaps & behavioral insights. Start building better habits today!",
+    keywords: "habit tracker, best habit tracker, free habit tracker, habit tracking app, daily habits, habit building, streak tracker, productivity habits, behavioral analytics, routine tracking, goal tracker, habit tracker online",
   },
 
   // Open Graph Defaults

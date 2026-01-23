@@ -86,7 +86,7 @@ export const metadata: Metadata = {
     images: ["/og-image.png"],
   },
   verification: {
-    google: "your-google-verification-code", // Add after Google Search Console setup
+    google: "D-reX19vKYdgckNJc-ciRCMCllKmOnixEpWjuVdhN3U",
     // yandex: "your-yandex-verification-code",
     // bing: "your-bing-verification-code",
   },
