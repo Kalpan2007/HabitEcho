@@ -34,6 +34,16 @@ export function useLogEntry(habitId: string) {
                 queryClient.invalidateQueries({ queryKey: QUERY_KEYS.performance.summary })
             ]);
         },
+        onError: (error) => {
+            // Log detailed error information for debugging
+            console.error('[useLogEntry] Failed to create entry:', error);
+            console.error('[useLogEntry] Habit ID:', habitId);
+            
+            // If it's an auth error, suggest user to refresh or re-login
+            if (error instanceof Error && error.message.includes('Authentication')) {
+                console.error('[useLogEntry] Authentication error detected. User may need to re-login.');
+            }
+        },
     });
 }
 

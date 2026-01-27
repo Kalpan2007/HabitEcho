@@ -105,11 +105,11 @@ export async function logout(
       await authService.logout(refreshToken);
     }
 
-    // Clear all auth cookies
+    // Clear all auth cookies with same options as when they were set
     const clearOptions = {
       httpOnly: true,
       secure: config.isProduction,
-      sameSite: config.isProduction ? ('strict' as const) : ('lax' as const),
+      sameSite: config.isProduction ? ('none' as const) : ('lax' as const),
       path: '/',
     };
 

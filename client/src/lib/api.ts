@@ -23,20 +23,70 @@ import type {
 // Render free tier can take 50-180 seconds to wake up from sleep
 const API_TIMEOUT_MS = 200 * 1000;
 
+// Track if we're currently refreshing to avoid duplicate refresh attempts
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
 /**
  * Get access token from cookie (client-side)
+ * Returns the token value or null if not found
  */
 function getAccessToken(): string | null {
   if (typeof document === 'undefined') return null;
   
-  const cookies = document.cookie.split(';');
-  for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === 'habitecho_access') {
-      return decodeURIComponent(value);
+  try {
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'habitecho_access' && value) {
+        return decodeURIComponent(value);
+      }
     }
+  } catch (error) {
+    console.error('[API] Failed to extract token from cookie:', error);
   }
   return null;
+}
+
+/**
+ * Attempt to refresh the access token using the refresh token
+ * Returns true if refresh succeeded, false otherwise
+ */
+async function tryRefreshToken(): Promise<boolean> {
+  // If already refreshing, wait for that to complete
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      console.log('[API] Attempting to refresh access token...');
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        console.log('[API] Token refresh successful');
+        return true;
+      }
+      
+      console.error('[API] Token refresh failed:', response.status);
+      return false;
+    } catch (error) {
+      console.error('[API] Token refresh error:', error);
+      return false;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
 export interface ApiOptions extends RequestInit {
@@ -76,18 +126,18 @@ async function apiFetch<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  // Get access token for Authorization header (cross-origin support)
+  // Get access token for Authorization header (primary auth method)
   const accessToken = getAccessToken();
 
   try {
     const response = await fetch(url, {
-      credentials: 'include', // Always send HttpOnly cookies
+      credentials: 'include', // Always send HttpOnly cookies as fallback
       cache: 'no-store', // Disable caching for user-specific data
       signal: controller.signal,
       ...fetchOptions,
       headers: {
         'Content-Type': 'application/json',
-        // Include Authorization header for cross-origin scenarios
+        // Always include Authorization header when token is available (required for cross-domain)
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...fetchOptions.headers,
       },
@@ -98,6 +148,26 @@ async function apiFetch<T>(
     const data = await response.json();
 
     if (!response.ok) {
+      // Special handling for authentication errors
+      if (response.status === 401) {
+        console.error('[API] Authentication failed for:', url);
+        console.error('[API] Token present:', !!accessToken);
+        
+        // Try to refresh the token once
+        const refreshed = await tryRefreshToken();
+        if (refreshed) {
+          console.log('[API] Token refreshed, retrying request...');
+          // Retry the original request with new token
+          return apiFetch(endpoint, options);
+        }
+        
+        throw new ApiError(
+          data.message || 'Authentication required. Please log in again.',
+          401,
+          data.error?.code || 'UNAUTHORIZED'
+        );
+      }
+      
       throw new ApiError(data.message || 'An error occurred', response.status, data.error?.code);
     }
 

@@ -33,7 +33,7 @@ async function apiRequest<T>(
       headers: {
         'Content-Type': 'application/json',
         Cookie: cookieHeader,
-        // Include Authorization header for cross-origin scenarios
+        // Always include Authorization header when token is available
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...options.headers,
       },

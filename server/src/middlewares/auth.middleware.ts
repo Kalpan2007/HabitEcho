@@ -5,30 +5,34 @@ import type { AuthenticatedRequest } from '../types/index.js';
 
 /**
  * Extract token from request
- * Priority: 1. Cookie (habitecho_access), 2. Authorization header (Bearer token)
+ * Priority: 1. Authorization header (Bearer token), 2. Cookie (habitecho_access)
+ * Authorization header takes priority for better cross-domain support
  */
 function extractToken(req: Request): string | null {
-  // First, try to get token from cookie
-  const cookieToken = req.cookies.habitecho_access;
-  
-  // Debug logging
-  console.log('[Auth] Cookie token present:', !!cookieToken);
-  console.log('[Auth] Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
-  
-  if (cookieToken) {
-    console.log('[Auth] Using cookie token, length:', cookieToken.length);
-    return cookieToken;
-  }
-
-  // Fallback: Check Authorization header (for cross-origin localhost development)
+  // First, check Authorization header (primary method for cross-domain)
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
-    console.log('[Auth] Using Bearer token, length:', token.length);
-    return token;
+    if (token && token.length > 0) {
+      console.log('[Auth] Using Bearer token from header, length:', token.length);
+      return token;
+    }
   }
 
-  console.log('[Auth] No token found!');
+  // Fallback: Try to get token from cookie (for same-domain requests)
+  const cookieToken = req.cookies.habitecho_access;
+  if (cookieToken && cookieToken.length > 0) {
+    console.log('[Auth] Using token from cookie, length:', cookieToken.length);
+    return cookieToken;
+  }
+
+  // Debug logging for missing tokens
+  console.log('[Auth] No valid token found!');
+  console.log('[Auth] Cookie present:', !!req.cookies.habitecho_access);
+  console.log('[Auth] Authorization header:', authHeader || 'Missing');
+  console.log('[Auth] Request path:', req.path);
+  console.log('[Auth] Request method:', req.method);
+  
   return null;
 }
 

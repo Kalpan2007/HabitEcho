@@ -74,7 +74,16 @@ export function HabitEntryLogger({ habitId, habitName, initialEntry, frequency, 
                 setShowPartialModal(false);
             },
             onError: (err: any) => {
-                error('Failed to update', err.message);
+                // Handle authentication errors specifically
+                if (err?.status === 401 || err?.message?.includes('Authentication') || err?.message?.includes('Unauthorized')) {
+                    error(
+                        'Authentication Required', 
+                        'Your session may have expired. Please refresh the page and try logging in again.'
+                    );
+                } else {
+                    error('Failed to update', err?.message || 'An unexpected error occurred. Please try again.');
+                }
+                console.error('[HabitEntryLogger] Error details:', err);
             }
         });
     };

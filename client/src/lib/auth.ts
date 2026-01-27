@@ -55,7 +55,8 @@ export async function getCurrentUser(): Promise<User | null> {
       cache: 'no-store',
       headers: {
         Cookie: cookieHeader,
-        // Include Authorization header for cross-origin scenarios
+        'Content-Type': 'application/json',
+        // Always include Authorization header when token is available
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
     });

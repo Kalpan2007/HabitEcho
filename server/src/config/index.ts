@@ -59,11 +59,11 @@ export const config = {
     name: 'habitecho_token',
     options: {
       httpOnly: true,
-      // Allow insecure cookies when ALLOW_INSECURE_COOKIES is true (for localhost development)
-      // In production with HTTPS frontends, this should be false and secure will be true
-      secure: !env.ALLOW_INSECURE_COOKIES, 
-      // Use 'lax' when allowing insecure cookies (localhost), 'none' for cross-domain HTTPS
-      sameSite: env.ALLOW_INSECURE_COOKIES ? ('lax' as const) : ('none' as const),
+      // Always use secure:true in production (required for sameSite:'none')
+      // In development, allow insecure cookies for localhost
+      secure: env.NODE_ENV === 'production' || !env.ALLOW_INSECURE_COOKIES,
+      // Use 'none' for cross-domain in production, 'lax' for same-domain in development
+      sameSite: env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: '/',
     },
