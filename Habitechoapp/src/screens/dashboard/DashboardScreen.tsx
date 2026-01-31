@@ -41,7 +41,7 @@ export default function DashboardScreen() {
                 renderItem={({ item }) => (
                     <HabitCard
                         habit={item}
-                        onPress={() => { }} // Navigate to detail later
+                        onPress={() => navigation.navigate('HabitDetail', { habitId: item.id })}
                     />
                 )}
                 ListEmptyComponent={
