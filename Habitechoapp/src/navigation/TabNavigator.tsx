@@ -21,6 +21,7 @@ import DashboardScreen from '../screens/dashboard/DashboardScreen';
 import PerformanceScreen from '../screens/dashboard/PerformanceScreen';
 
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import HabitsListScreen from '../screens/habits/HabitsListScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -28,7 +29,7 @@ export function TabNavigator() {
     return (
         <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: '#4f46e5' }}>
             <Tab.Screen name="Dashboard" component={DashboardScreen} />
-            <Tab.Screen name="Habits" children={() => <PlaceholderScreen title="Habits" />} />
+            <Tab.Screen name="Habits" component={HabitsListScreen} />
             <Tab.Screen name="Performance" component={PerformanceScreen} />
             <Tab.Screen name="Profile" component={ProfileScreen} />
         </Tab.Navigator>
