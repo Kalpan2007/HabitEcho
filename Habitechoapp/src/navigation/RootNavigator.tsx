@@ -5,6 +5,8 @@ import { AuthNavigator } from './AuthNavigator';
 import { TabNavigator } from './TabNavigator';
 
 import CreateHabitScreen from '../screens/habits/CreateHabitScreen';
+import HabitDetailScreen from '../screens/habits/HabitDetailScreen';
+import HabitEntryScreen from '../screens/habits/HabitEntryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -25,6 +27,11 @@ export function RootNavigator() {
                         name="HabitDetail"
                         component={HabitDetailScreen}
                         options={{ headerTitle: '', presentation: 'card' }}
+                    />
+                    <Stack.Screen
+                        name="HabitEntry"
+                        component={HabitEntryScreen}
+                        options={{ presentation: 'modal', headerTitle: 'Log Entry' }}
                     />
                 </Stack.Group>
             ) : (
