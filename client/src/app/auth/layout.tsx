@@ -1,13 +1,11 @@
 import { ReactNode } from 'react';
 import { Metadata } from 'next';
-import { Logo } from '@/components/ui';
 
 // ============================================
-// AUTH LAYOUT
+// AUTH LAYOUT - Modern Split Screen Design
 // Server Component - wraps all auth pages
 // ============================================
 
-// Auth pages metadata - allow indexing for signup, but not deep crawling
 export const metadata: Metadata = {
   robots: {
     index: false,
@@ -21,44 +19,80 @@ interface AuthLayoutProps {
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-[linear-gradient(135deg,#f0f4ff_0%,#e6ecff_45%,#f8f3ff_100%)] text-slate-900">
-      <div className="absolute inset-0">
-        <div className="absolute -top-32 left-12 h-60 w-60 rounded-full bg-indigo-200/50 blur-[150px]" />
-        <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-purple-200/40 blur-[180px]" />
-      </div>
-      <div className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-4 py-8 sm:px-8">
-        <div className="mb-6 flex items-center gap-3 text-slate-500">
-          <Logo size={34} />
-          <span className="text-xs uppercase tracking-[0.3em] text-slate-400">
-            Habit Intelligence
-          </span>
+    <div className="min-h-screen bg-white flex">
+      {/* Left Side - Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12">
+        <div className="w-full max-w-md">
+          {children}
         </div>
-        <div className="w-full max-w-3xl rounded-[32px] border border-white bg-white/90 p-5 shadow-[0_45px_120px_rgba(15,23,42,0.12)] backdrop-blur-lg sm:p-8">
-          <div className="grid gap-8 lg:grid-cols-[1.05fr,0.95fr] items-center">
-            <div className="space-y-5 text-center lg:text-left">
-              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-indigo-500/80">
-                Private-first habit OS
-              </p>
-              <h1 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
-                Sign in to your <span className="text-transparent bg-linear-to-r from-indigo-600 to-purple-600 bg-clip-text">HabitEcho</span> console.
-              </h1>
-              <p className="text-sm text-slate-500">
-                Zero-trust security, predictive momentum, and Supabase-backed telemetry—available once you authenticate.
-              </p>
-              <div className="grid gap-3 text-xs text-slate-600 sm:grid-cols-2">
-                {[
-                  { label: 'Dual token', detail: 'HttpOnly access + refresh' },
-                  { label: 'Realtime hydration', detail: 'TanStack Query v5' },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-slate-100 bg-slate-50 p-3 shadow-sm">
-                    <p className="text-xs font-semibold text-slate-900">{item.label}</p>
-                    <p>{item.detail}</p>
-                  </div>
-                ))}
+      </div>
+
+      {/* Right Side - HabitEcho Dashboard Preview */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
+        {/* Purple gradient background with diagonal pattern */}
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-purple-700 via-purple-600 to-purple-800"
+          style={{
+            backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.05) 35px, rgba(255,255,255,.05) 70px)'
+          }}
+        />
+
+        {/* HabitEcho Dashboard Preview Content */}
+        <div className="relative z-10 flex items-center justify-center w-full p-12">
+          <div className="space-y-6 max-w-xl w-full">
+            {/* Active Habits Card */}
+            <div className="bg-white rounded-2xl p-6 shadow-2xl transform rotate-[-2deg]">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Active Habits</p>
+                  <h3 className="text-4xl font-bold text-gray-900">24</h3>
+                  <p className="text-sm text-purple-600 flex items-center gap-1 mt-1 font-semibold">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    +15% from last month
+                  </p>
+                </div>
+                <div className="w-16 h-16">
+                  <svg viewBox="0 0 100 100" className="transform -rotate-90">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#E5E7EB" strokeWidth="10" />
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#A855F7" strokeWidth="10" strokeDasharray="251.2" strokeDashoffset="50.24" />
+                  </svg>
+                </div>
               </div>
             </div>
-            <div className="max-h-[70vh] overflow-y-auto rounded-[24px] border border-slate-100 bg-white p-5 sm:p-6">
-              {children}
+
+            {/* Weekly Progress Chart */}
+            <div className="bg-white rounded-2xl p-6 shadow-2xl transform rotate-[1deg]">
+              <div className="h-48 flex items-end justify-between gap-3">
+                {[65, 80, 58, 75, 90, 68, 85].map((height, i) => (
+                  <div key={i} className="flex-1 bg-gradient-to-t from-purple-500 to-purple-300 rounded-t-lg" style={{ height: `${height}%` }} />
+                ))}
+              </div>
+              <div className="mt-6">
+                <h4 className="text-2xl font-bold text-gray-900">89% Consistency</h4>
+                <p className="text-sm text-green-600 flex items-center gap-1 font-semibold">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                  +12% improvement this week
+                </p>
+              </div>
+            </div>
+
+            {/* Promotional Banner */}
+            <div className="text-center text-white px-4">
+              <h2 className="text-3xl font-bold mb-3 drop-shadow-lg">Track Your Habits Effortlessly</h2>
+              <p className="text-purple-100 text-lg font-medium drop-shadow">
+                Build lasting habits with intelligent tracking, streak insights, and personalized analytics. Sign in to explore!
+              </p>
+            </div>
+
+            {/* Page Indicators */}
+            <div className="flex justify-center gap-2">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className={`h-2 rounded-full transition-all ${i === 2 ? 'w-8 bg-white' : 'w-2 bg-white/40'}`} />
+              ))}
             </div>
           </div>
         </div>

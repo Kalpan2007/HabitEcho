@@ -9,7 +9,7 @@ import { getToday } from '@/lib/utils';
 import type { FormState } from '@/types';
 
 // ============================================
-// SIGNUP PAGE - Multi-step Verification Flow
+// SIGNUP PAGE - Minimal Design Multi-step Flow
 // ============================================
 
 const initialSignupState: FormState = {
@@ -81,86 +81,120 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto space-y-8">
-      <div className="space-y-3 text-center sm:text-left">
-        <span className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-indigo-600 sm:text-xs">
-          Step {step} of 2
-        </span>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-semibold text-slate-900 sm:text-3xl">
-            {step === 1 ? 'Create your private studio' : 'Verify your access'}
-          </h2>
-          <p className="text-sm text-slate-500">
-            {step === 1
-              ? 'We’ll tune HabitEcho to your cadence—share a few details to begin.'
-              : `Enter the 6-digit verification code sent to ${email}.`}
-          </p>
+    <div className="space-y-6">
+      {/* Logo / Branding */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl flex items-center justify-center shadow-md">
+          <span className="text-white font-bold text-xl">H</span>
         </div>
-        <div className="hidden gap-4 text-left sm:grid sm:grid-cols-2">
-          {[
-            { title: 'Enterprise-ready', value: 'Zero-trust security grid' },
-            { title: 'Timezone aware', value: 'Intelligent reminder engine' },
-          ].map((item) => (
-            <div key={item.title} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-              <p className="text-xs uppercase tracking-wide text-slate-400">{item.title}</p>
-              <p className="text-sm font-semibold text-slate-900">{item.value}</p>
-            </div>
-          ))}
-        </div>
+        <span className="text-xl font-bold text-gray-900">HabitEcho</span>
       </div>
 
       {step === 1 ? (
         <>
-          <form action={signupFormAction} className="space-y-5">
-            <Input
-              label="Full name"
-              name="fullName"
-              type="text"
-              autoComplete="name"
-              placeholder="John Doe"
-              required
-              error={signupState.errors?.fullName?.[0]}
-            />
+          {/* Heading */}
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold text-gray-900">Create an account</h1>
+            <p className="text-gray-600 text-sm">
+              Already have an account?{' '}
+              <Link href={ROUTES.LOGIN} className="text-purple-600 hover:text-purple-700 font-semibold">
+                Sign in
+              </Link>
+            </p>
+          </div>
 
-            <Input
-              label="Email address"
-              name="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              required
-              error={signupState.errors?.email?.[0]}
-            />
+          {/* Signup Form */}
+          <form action={signupFormAction} className="space-y-4">
+            {/* Full Name */}
+            <div>
+              <label htmlFor="fullName" className="block text-sm font-semibold text-gray-900 mb-1.5">
+                Full name
+              </label>
+              <input
+                id="fullName"
+                name="fullName"
+                type="text"
+                autoComplete="name"
+                placeholder="John Doe"
+                required
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900 placeholder:text-gray-400"
+              />
+              {signupState.errors?.fullName?.[0] && (
+                <p className="mt-1 text-sm text-red-600">{signupState.errors.fullName[0]}</p>
+              )}
+            </div>
 
-            <Input
-              label="Password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="••••••••"
-              hint="Min 8 chars, mixed case, numbers & special chars"
-              required
-              error={signupState.errors?.password?.[0]}
-            />
+            {/* Email */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-1.5">
+                Email address
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                required
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900 placeholder:text-gray-400"
+              />
+              {signupState.errors?.email?.[0] && (
+                <p className="mt-1 text-sm text-red-600">{signupState.errors.email[0]}</p>
+              )}
+            </div>
 
-            <Select
-              label="Occupation"
-              name="occupation"
-              options={OCCUPATION_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
-              placeholder="Select your occupation"
-              required
-              error={signupState.errors?.occupation?.[0]}
-            />
+            {/* Password */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-900 mb-1.5">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                required
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900"
+              />
+              {signupState.errors?.password?.[0] && (
+                <p className="mt-1 text-sm text-red-600">{signupState.errors.password[0]}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">Min 8 chars, mixed case, numbers & special chars</p>
+            </div>
+
+            {/* Occupation */}
+            <div>
+              <label htmlFor="occupation" className="block text-sm font-semibold text-gray-900 mb-1.5">
+                Occupation
+              </label>
+              <select
+                id="occupation"
+                name="occupation"
+                required
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white text-gray-900"
+              >
+                <option value="">Select your occupation</option>
+                {OCCUPATION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {signupState.errors?.occupation?.[0] && (
+                <p className="mt-1 text-sm text-red-600">{signupState.errors.occupation[0]}</p>
+              )}
+            </div>
 
             {/* Date of Birth / Age Toggle */}
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <div className="flex items-center justify-between mb-3">
-                <span className="block text-sm font-semibold text-slate-700">
+            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="block text-sm font-semibold text-gray-900">
                   {useAge ? 'Your Age' : 'Date of Birth'}
                 </span>
                 <button
                   type="button"
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-500 px-2 py-1 bg-white rounded-md border border-slate-200 shadow-sm transition-all"
+                  className="text-xs font-medium text-purple-600 hover:text-purple-700 px-2.5 py-1 bg-white rounded-md border border-gray-200 transition-all"
                   onClick={() => setUseAge(!useAge)}
                 >
                   Use {useAge ? 'date of birth' : 'age'} instead
@@ -168,21 +202,27 @@ export default function SignupPage() {
               </div>
 
               {useAge ? (
-                <Input
+                <input
                   name="age"
                   type="number"
                   min={13}
                   max={120}
                   placeholder="25"
-                  error={signupState.errors?.age?.[0]}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900"
                 />
               ) : (
-                <Input
+                <input
                   name="dateOfBirth"
                   type="date"
                   max={getToday()}
-                  error={signupState.errors?.dateOfBirth?.[0]}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900"
                 />
+              )}
+              {signupState.errors?.age?.[0] && (
+                <p className="mt-1 text-sm text-red-600">{signupState.errors.age[0]}</p>
+              )}
+              {signupState.errors?.dateOfBirth?.[0] && (
+                <p className="mt-1 text-sm text-red-600">{signupState.errors.dateOfBirth[0]}</p>
               )}
             </div>
 
@@ -192,24 +232,26 @@ export default function SignupPage() {
               value={Intl.DateTimeFormat().resolvedOptions().timeZone}
             />
 
-            <Button
+            {/* Sign Up Button */}
+            <button
               type="submit"
-              className="w-full py-3 text-base shadow-lg shadow-indigo-200"
-              isLoading={isSignupPending}
+              disabled={isSignupPending}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
-              Sign Up & Send Code
-            </Button>
+              {isSignupPending ? 'Creating account...' : 'Sign Up & Send Code'}
+            </button>
 
+            {/* Server Loading Message */}
             {isSignupPending && (
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-blue-600 mt-0.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5 animate-spin flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   <div className="text-sm">
                     <p className="font-semibold text-blue-900">Server is waking up...</p>
-                    <p className="text-blue-700 mt-1">First request can take up to 3 minutes on free hosting. Please wait, don't refresh!</p>
+                    <p className="text-blue-700 mt-0.5">First request can take up to 3 minutes. Please wait!</p>
                   </div>
                 </div>
               </div>
@@ -217,48 +259,60 @@ export default function SignupPage() {
           </form>
         </>
       ) : (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="space-y-5">
+          {/* Email Verification Icon */}
+          <div className="text-center">
+            <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Verify your email</h2>
-            <p className="text-gray-500 mt-2 text-sm">
-              We've sent a 6-digit verification code to <br />
-              <span className="font-semibold text-gray-700">{email}</span>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Verify your email</h1>
+            <p className="text-gray-600 text-sm">
+              We've sent a 6-digit code to<br />
+              <span className="font-semibold text-gray-900">{email}</span>
             </p>
           </div>
 
-          <form action={verifyFormAction} className="space-y-6">
+          {/* Verification Form */}
+          <form action={verifyFormAction} className="space-y-5">
             <input type="hidden" name="email" value={email} />
 
-            <Input
-              label="Verification Code"
-              name="otp"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="000000"
-              className="text-center text-2xl tracking-[1em] font-mono"
-              maxLength={6}
-              required
-              error={verifyState.message}
-            />
+            {/* OTP Input */}
+            <div>
+              <label htmlFor="otp" className="block text-sm font-semibold text-gray-900 mb-1.5">
+                Verification Code
+              </label>
+              <input
+                id="otp"
+                name="otp"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="000000"
+                maxLength={6}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-[1em] font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-900"
+              />
+              {verifyState.message && !verifyState.success && (
+                <p className="mt-1 text-sm text-red-600">{verifyState.message}</p>
+              )}
+            </div>
 
-            <Button
+            {/* Verify Button */}
+            <button
               type="submit"
-              className="w-full py-3"
-              isLoading={isVerifyPending}
+              disabled={isVerifyPending}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
-              Verify & Complete
-            </Button>
+              {isVerifyPending ? 'Verifying...' : 'Verify & Complete'}
+            </button>
 
+            {/* Resend Code */}
             <div className="text-center">
               <button
                 type="button"
-                className="text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+                className="text-sm text-gray-600 hover:text-purple-600 transition-colors font-medium"
                 onClick={handleResend}
                 disabled={isResending}
               >
@@ -266,9 +320,10 @@ export default function SignupPage() {
               </button>
             </div>
 
+            {/* Back to Registration */}
             <button
               type="button"
-              className="w-full text-xs text-gray-400 hover:text-gray-600 pt-4"
+              className="w-full text-sm text-gray-500 hover:text-gray-700 transition-colors"
               onClick={() => setStep(1)}
             >
               ← Back to registration
@@ -276,15 +331,6 @@ export default function SignupPage() {
           </form>
         </div>
       )}
-
-      <div className="border-t border-slate-100 pt-6">
-        <div className="flex justify-center text-sm">
-          <span className="text-slate-500 mr-2">Already have an account?</span>
-          <Link href={ROUTES.LOGIN} className="font-semibold text-indigo-600 hover:text-indigo-500 underline decoration-indigo-200 underline-offset-4">
-            Sign in
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }
