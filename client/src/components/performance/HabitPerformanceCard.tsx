@@ -2,12 +2,12 @@ import Link from 'next/link';
 import { Card, FrequencyBadge } from '@/components/ui';
 import { ROUTES } from '@/lib/constants';
 import { getMomentumDisplay, formatScheduleDays } from '@/lib/utils';
-import { Heatmap } from './Heatmap';
+import { YearlyHeatmap } from './YearlyHeatmap';
 import type { Habit, HabitPerformance } from '@/types';
 
 // ============================================
-// HABIT PERFORMANCE CARD
-// Displays detailed analytics for a single habit
+// HABIT PERFORMANCE CARD - GitHub Style
+// Displays analytics with yearly contribution graph
 // ============================================
 
 interface HabitPerformanceCardProps {
@@ -20,59 +20,69 @@ export function HabitPerformanceCard({ habit, performance }: HabitPerformanceCar
 
   return (
     <Card>
-      <div className="p-6">
-        <div className="flex items-start justify-between">
-          <div>
+      <div className="p-5">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3 flex-1">
             <Link href={`${ROUTES.HABITS}/${habit.id}`}>
-              <h3 className="text-lg font-bold text-gray-800 hover:text-indigo-600">
+              <h3 className="text-base font-bold text-gray-900 hover:text-purple-600 transition-colors">
                 {habit.name}
               </h3>
             </Link>
-            <div className="mt-1 flex items-center gap-2">
-              <FrequencyBadge frequency={habit.frequency} />
-              {habit.frequency === 'WEEKLY' && habit.scheduleDays && (
-                <p className="text-xs text-gray-500">
-                  {formatScheduleDays(habit.frequency, habit.scheduleDays)}
-                </p>
-              )}
-            </div>
+            <FrequencyBadge frequency={habit.frequency} />
+            {habit.frequency === 'WEEKLY' && habit.scheduleDays && (
+              <p className="text-xs text-gray-500">
+                {formatScheduleDays(habit.frequency, habit.scheduleDays)}
+              </p>
+            )}
           </div>
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-1.5 text-xs">
             <span className={momentumDisplay.color}>{momentumDisplay.icon}</span>
             <span className="font-semibold text-gray-700">{momentumDisplay.label}</span>
           </div>
         </div>
-      </div>
 
-      {/* Key Stats */}
-      <div className="grid grid-cols-2 gap-4 px-6 pb-6 border-b border-gray-100">
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <p className="text-xl font-bold text-gray-900">{performance.streaks.currentStreak}</p>
-          <p className="text-xs text-gray-500">Current Streak</p>
+        {/* Stats Row */}
+        <div className="flex items-center gap-6 mb-4 text-sm">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+            </svg>
+            <span className="text-gray-600">
+              <span className="font-bold text-gray-900">{performance.streaks.currentStreak}</span> day streak
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+            </svg>
+            <span className="text-gray-600">
+              <span className="font-bold text-gray-900">{performance.streaks.longestStreak}</span> longest
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span className="text-gray-600">
+              <span className="font-bold text-purple-600">{performance.rollingAverage}%</span> last 7 days
+            </span>
+          </div>
         </div>
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <p className="text-xl font-bold text-gray-900">{performance.streaks.longestStreak}</p>
-          <p className="text-xs text-gray-500">Longest Streak</p>
-        </div>
-      </div>
 
-      {/* Rolling Averages */}
-      <div className="px-6 pt-4 pb-2">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Rolling Average</h4>
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-indigo-600">
-            {performance.rollingAverage}%
-          </span>
-          <span className="text-xs text-gray-500">7-day completion</span>
-        </div>
+        {/* Yearly Heatmap */}
+        {performance.heatmap && performance.heatmap.length > 0 && (
+          <div className="pt-4 border-t border-gray-100">
+            <YearlyHeatmap
+              data={performance.heatmap}
+              frequency={habit.frequency}
+              scheduleDays={habit.scheduleDays}
+              startDate={habit.startDate}
+              endDate={habit.endDate}
+            />
+          </div>
+        )}
       </div>
-
-      {/* Heatmap */}
-      {performance.heatmap && performance.heatmap.length > 0 && (
-        <div className="px-2 pt-2 pb-4">
-          <Heatmap data={performance.heatmap} />
-        </div>
-      )}
     </Card>
   );
 }

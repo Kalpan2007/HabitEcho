@@ -144,9 +144,9 @@ export default async function PerformancePage() {
             change={
               summary.momentum
                 ? {
-                    value: summary.momentum.percentageChange,
-                    trend: summary.momentum.trend.toLowerCase() as 'up' | 'down' | 'stable',
-                  }
+                  value: summary.momentum.percentageChange,
+                  trend: summary.momentum.trend.toLowerCase() as 'up' | 'down' | 'stable',
+                }
                 : undefined
             }
             icon={
@@ -158,31 +158,10 @@ export default async function PerformancePage() {
         </div>
       )}
 
-      {/* Rolling Averages */}
-      {summary?.rollingAverage && (
-        <Card>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Rolling Averages</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-3xl font-bold text-indigo-600">{summary.rollingAverage.last7Days}%</p>
-              <p className="text-sm text-gray-500 mt-1">Last 7 days</p>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-3xl font-bold text-indigo-600">{summary.rollingAverage.last14Days}%</p>
-              <p className="text-sm text-gray-500 mt-1">Last 14 days</p>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <p className="text-3xl font-bold text-indigo-600">{summary.rollingAverage.last30Days}%</p>
-              <p className="text-sm text-gray-500 mt-1">Last 30 days</p>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {/* Individual Habit Performance */}
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Habit Analytics</h2>
-        
+
         {habits.length === 0 ? (
           <Card>
             <div className="text-center py-12">
@@ -214,7 +193,7 @@ export default async function PerformancePage() {
             </div>
           </Card>
         ) : (
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {habits.map((habit) => {
               const performance = performances.get(habit.id);
               if (!performance) return null;
