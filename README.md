@@ -189,7 +189,7 @@ sequenceDiagram
 
 ##  Technology Stack
 
-### **Frontend**
+### **Frontend (Web)**
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
@@ -200,6 +200,7 @@ sequenceDiagram
 | **Tailwind CSS** | 4.x | Utility-first styling system |
 | **Framer Motion** | 12.x | Smooth animations and micro-interactions |
 | **Day.js** | Latest | Lightweight date handling with timezone support |
+| **Shadcn/ui** | Latest | Beautifully designed components built with Radix UI |
 
 ### **Backend**
 
@@ -216,6 +217,84 @@ sequenceDiagram
 | **Helmet** | Latest | Security headers |
 | **Pino** | Latest | High-performance logging |
 
+### **Mobile Application (In Development)** 
+
+>  **Note**: A React Native mobile application is currently under development to bring the full HabitEcho experience to iOS and Android devices. The mobile app will feature native performance, offline capabilities, and push notifications for habit reminders.
+
+| Technology | Status | Purpose |
+|------------|--------|---------|
+| **React Native** |  In Progress | Cross-platform mobile framework |
+| **Expo** |  In Progress | Development and build tooling |
+| **NativeWind** |  In Progress | Tailwind CSS for React Native |
+| **React Navigation** |  In Progress | Native navigation patterns |
+
+---
+
+##  Project Structure
+
+### **Monorepo Organization**
+
+```
+HabitEcho/
+├── client/                 # Next.js Web Application
+│   ├── src/
+│   │   ├── actions/       # Server Actions (auth, habits, entries)
+│   │   ├── app/           # App Router pages & layouts
+│   │   ├── components/    # React components (auth, dashboard, charts)
+│   │   ├── hooks/         # Custom React hooks (useHabits, useEntries)
+│   │   ├── lib/           # Utilities (API client, auth helpers, constants)
+│   │   └── types/         # TypeScript type definitions
+│   └── public/            # Static assets
+│
+├── server/                # Express.js Backend API
+│   ├── src/
+│   │   ├── config/        # Configuration (database, environment)
+│   │   ├── controllers/   # Request handlers
+│   │   ├── middlewares/   # Auth, validation, rate limiting
+│   │   ├── routes/        # API route definitions
+│   │   ├── services/      # Business logic layer
+│   │   ├── utils/         # Helper functions
+│   │   └── validations/   # Zod schemas
+│   ├── prisma/            # Database schema & migrations
+│   │   ├── schema.prisma  # Prisma data model
+│   │   ├── migrations/    # Version-controlled DB changes
+│   │   └── seed.ts        # Database seeding scripts
+│   └── tests/             # API testing utilities
+│
+└── Habitechoapp/          # React Native Mobile App (In Development)
+    ├── src/
+    │   ├── api/           # API client & endpoints
+    │   ├── auth/          # Authentication context & storage
+    │   ├── components/    # Native UI components
+    │   ├── hooks/         # Custom hooks for mobile
+    │   ├── navigation/    # Navigation stack & tabs
+    │   ├── screens/       # Mobile screens (Home, Dashboard, Profile)
+    │   └── types/         # TypeScript definitions
+    └── assets/            # Images, fonts, icons
+```
+
+### **Key Directories Explained**
+
+#### **Client Application** (`/client`)
+- **`actions/`**: Server-side functions for authentication, habit management, and entry logging
+- **`app/`**: Next.js 15 App Router with nested layouts and pages
+- **`components/`**: Reusable React components organized by feature
+- **`hooks/`**: Custom hooks for data fetching with TanStack Query
+- **`lib/`**: Shared utilities including API client and authentication helpers
+
+#### **Server Application** (`/server`)
+- **`controllers/`**: HTTP request handlers that interface with services
+- **`services/`**: Business logic layer implementing habit tracking algorithms
+- **`middlewares/`**: Authentication, validation, and security middleware
+- **`prisma/`**: Database schema, migrations, and seeding scripts
+- **`validations/`**: Zod schemas for request validation
+
+#### **Mobile Application** (`/Habitechoapp`) 
+- **`screens/`**: React Native screens for navigation stack
+- **`navigation/`**: Tab and stack navigators for iOS/Android
+- **`api/`**: Shared API client with the web application
+- **`components/`**: Native UI components with NativeWind styling
+
 ---
 
 ##  Quick Start
@@ -225,6 +304,7 @@ sequenceDiagram
 - Node.js 20+
 - PostgreSQL 14+
 - npm or yarn
+- Git
 
 ### **Installation**
 
@@ -236,19 +316,61 @@ cd HabitEcho
 # 2. Backend setup
 cd server
 npm install
+
+# 3. Configure environment variables
 cp .env.example .env
-# Edit .env with your DATABASE_URL, JWT_SECRET, etc.
+# Edit .env with the following:
+#   DATABASE_URL="postgresql://user:password@localhost:5432/habitecho"
+#   JWT_ACCESS_SECRET="your-secure-access-secret"
+#   JWT_REFRESH_SECRET="your-secure-refresh-secret"
+#   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS (for email reminders)
+#   FRONTEND_URL="http://localhost:3000"
+
+# 4. Database initialization
 npx prisma migrate dev
 npx prisma generate
+npm run seed  # (optional) Add sample data
+
+# 5. Start backend server
 npm run dev  # Runs on http://localhost:3001
 
-# 3. Frontend setup (new terminal)
+# 6. Frontend setup (new terminal)
 cd ../client
 npm install
+
+# 7. Configure client environment
 cp .env.example .env.local
-# Edit .env.local with NEXT_PUBLIC_API_URL
+# Edit .env.local:
+#   NEXT_PUBLIC_API_URL="http://localhost:3001"
+
+# 8. Start frontend development server
 npm run dev  # Runs on http://localhost:3000
+
+# 9. Access the application
+# Open http://localhost:3000 in your browser
 ```
+
+### **Mobile App Setup (Optional - In Development)** 
+
+```bash
+# 1. Navigate to mobile app directory
+cd Habitechoapp
+
+# 2. Install dependencies
+npm install
+
+# 3. Start Expo development server
+npx expo start
+
+# 4. Run on your device
+# - Install Expo Go app on your iOS/Android device
+# - Scan the QR code displayed in terminal
+# OR
+# - Press 'a' for Android emulator
+# - Press 'i' for iOS simulator (macOS only)
+```
+
+> **Note**: The mobile application shares the same backend API as the web application. Ensure the backend server is running before testing the mobile app.
 
 ---
 
@@ -256,12 +378,50 @@ npm run dev  # Runs on http://localhost:3000
 
 | Document | Description |
 |----------|-------------|
-| **[FRONTEND.md](./FRONTEND.md)** | Complete frontend architecture, Next.js patterns, component design |
-| **[BACKEND.md](./BACKEND.md)** | Backend architecture, service layer, database schema |
-| **[API-DOCS.md](./API-DOCS.md)** | Full API reference with all endpoints |
-| **[tanstack-query.md](./tanstack-query.md)** | TanStack Query implementation and caching strategies |
-| **[performance.md](./performance.md)** | Performance optimizations and benchmarks |
-| **[DEPLOYMENT.md](./DEPLOYMENT.md)** | Production deployment guide (Render + Vercel) |
+| **[FRONTEND.md](./FRONTEND.md)** | Complete frontend architecture, Next.js patterns, component design, TanStack Query implementation |
+| **[BACKEND.md](./BACKEND.md)** | Backend architecture, service layer, database schema, API design patterns |
+| **[API-DOCS.md](./API-DOCS.md)** | Full API reference with all endpoints, request/response examples, authentication flows |
+| **[tanstack-query.md](./tanstack-query.md)** | TanStack Query implementation and caching strategies, optimistic updates |
+| **[render.yaml](./render.yaml)** | Production deployment configuration for Render.com |
+
+### **Additional Resources**
+
+- **Database Schema**: See [server/prisma/schema.prisma](./server/prisma/schema.prisma) for complete data models
+- **Environment Variables**: Check `.env.example` files in `/server` and `/client` directories
+- **Type Definitions**: Shared types in `/client/src/types` and `/server/src/types`
+- **API Endpoints**: REST API documentation in [API-DOCS.md](./API-DOCS.md)
+
+---
+
+##  Features Breakdown
+
+### ** Core Features (Implemented)**
+-  User authentication with email verification
+-  Dual-token JWT authentication (access + refresh tokens)
+-  Create, update, and delete habits
+-  Flexible habit scheduling (daily, weekly, monthly, custom)
+-  Real-time habit completion tracking
+-  Advanced analytics dashboard with momentum tracking
+-  365-day habit heatmap visualization
+-  Streak counting with intelligent algorithms
+-  Rolling averages (7/14/30 day windows)
+-  Timezone-aware reminder system
+-  Email notifications for habit reminders
+-  User profile management
+-  Password reset functionality
+-  Responsive design for all screen sizes
+
+### ** Upcoming Features (Roadmap)**
+-  Native mobile applications (iOS & Android)
+-  Push notifications for mobile devices
+-  Offline mode with data synchronization
+-  Social features (share progress, compete with friends)
+-  Habit templates and suggestions
+-  Advanced data export (CSV, JSON, PDF reports)
+-  Integration with third-party services (Google Calendar, Apple Health)
+-  Gamification (achievements, badges, leaderboards)
+-  AI-powered habit recommendations
+-  Dark mode theming
 
 ---
 
@@ -280,18 +440,131 @@ npm run dev  # Runs on http://localhost:3000
 
 ##  What You''ll Learn
 
-This project demonstrates:
+This project demonstrates advanced full-stack development patterns and production-ready practices:
 
+### **Frontend Engineering**
 -  Next.js 15 App Router with Server Components and Server Actions
--  Advanced TanStack Query patterns (SSR hydration, optimistic updates)
+-  Advanced TanStack Query patterns (SSR hydration, optimistic updates, cache invalidation)
+-  Type-safe end-to-end TypeScript with strict mode
+-  Modern React patterns (hooks, context, custom hooks)
+-  Responsive design with Tailwind CSS and mobile-first approach
+-  Component composition and reusability
+-  Client-side and server-side form handling
+-  Error boundaries and loading states
+
+### **Backend Engineering**
 -  Clean Architecture with service-oriented design
--  Dual-token JWT authentication with refresh tokens
+-  RESTful API design with proper HTTP semantics
+-  Dual-token JWT authentication with refresh token rotation
+-  Middleware patterns (auth, validation, rate limiting)
+-  Database query optimization and N+1 prevention
 -  Timezone-aware date handling across full stack
--  Prisma ORM with query optimization
--  Type-safe end-to-end TypeScript
--  Production-ready security (Helmet, CORS, rate limiting)
--  Performance optimization techniques
--  Database schema design and migrations
+-  Email service integration (SMTP with Brevo/Gmail)
+-  Idempotent operations and atomic transactions
+
+### **Database & ORM**
+-  Prisma ORM with advanced query patterns
+-  Database schema design and normalization
+-  Migration management and version control
+-  Efficient querying with strategic `select` clauses
+-  Soft deletes and data integrity
+-  Seeding and test data generation
+
+### **Security Best Practices**
+-  HttpOnly cookies for token storage (XSS prevention)
+-  CSRF protection with SameSite cookies
+-  Password hashing with Bcrypt (10 salt rounds)
+-  SQL injection prevention via parameterized queries
+-  Rate limiting and request throttling
+-  Security headers with Helmet.js
+-  Input validation with Zod schemas
+-  Origin validation and CORS configuration
+
+### **Performance Optimization**
+-  Server-Side Rendering (SSR) for instant page loads
+-  Query batching to reduce API calls
+-  Smart caching strategies with stale-while-revalidate
+-  Code splitting and lazy loading
+-  Database query optimization (60% payload reduction)
+-  Image optimization with Next.js
+-  Lighthouse scores optimization
+
+### **DevOps & Production Readiness**
+-  Environment variable management
+-  Database migrations and schema versioning
+-  Logging with structured JSON (Pino)
+-  Error handling and graceful degradation
+-  Production deployment configuration (Render.com)
+-  Monorepo organization and project structure
+-  Git workflow and version control
+
+---
+
+##  Development Workflow
+
+### **Running Tests**
+```bash
+# Backend tests
+cd server
+npm run test
+
+# Frontend tests
+cd client
+npm run test
+```
+
+### **Database Management**
+```bash
+# Create a new migration
+npx prisma migrate dev --name your_migration_name
+
+# Reset database (WARNING: deletes all data)
+npx prisma migrate reset
+
+# Generate Prisma Client after schema changes
+npx prisma generate
+
+# Open Prisma Studio (GUI for database)
+npx prisma studio
+```
+
+### **Code Quality**
+```bash
+# Lint frontend code
+cd client
+npm run lint
+
+# Lint backend code
+cd server
+npm run lint
+
+# Type checking
+npm run type-check
+```
+
+---
+
+##  Deployment
+
+### **Production Deployment**
+
+This application is configured for deployment on **Render.com** (backend) and **Vercel** (frontend).
+
+#### **Backend (Render.com)**
+1. Create a new Web Service on Render
+2. Connect your GitHub repository
+3. Set environment variables (DATABASE_URL, JWT secrets, SMTP config)
+4. Render will automatically detect the `render.yaml` configuration
+5. Database migrations run automatically on deploy
+
+#### **Frontend (Vercel)**
+1. Import project from GitHub to Vercel
+2. Select the `client` directory as root
+3. Set `NEXT_PUBLIC_API_URL` environment variable
+4. Vercel will automatically detect Next.js configuration
+5. Deploy with automatic CI/CD on git push
+
+See [render.yaml](./render.yaml) for complete configuration details.
 
 ---
 
