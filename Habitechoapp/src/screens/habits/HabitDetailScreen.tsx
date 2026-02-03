@@ -24,7 +24,7 @@ export default function HabitDetailScreen() {
         );
     }
 
-    const habit = data?.data?.habit;
+    const habit = data?.habit;
 
     if (!habit) {
         return (
