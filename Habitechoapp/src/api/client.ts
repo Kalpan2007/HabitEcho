@@ -8,7 +8,7 @@ import Constants from 'expo-constants';
 // Update this IP to your computer's local IP if testing on physical device
 // For Android Emulator, use 'http://10.0.2.2:3001'
 // For iOS Simulator, use 'http://localhost:3001'
-const BASE_URL = 'http://10.239.64.5:3001/api/v1';
+const BASE_URL = 'http://10.116.100.5:3001/api/v1';
 
 console.log('API Client initialized with Base URL:', BASE_URL);
 
@@ -28,7 +28,7 @@ apiClient.interceptors.request.use(async (config) => {
     return config;
 });
 
-// Response Interceptor: Handle Refresh
+// Response Interceptor: Handle Errors and Token Refresh
 apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
@@ -42,42 +42,37 @@ apiClient.interceptors.response.use(
 
             try {
                 const refreshToken = await authStorage.getRefreshToken();
-                if (!refreshToken) throw new Error('No refresh token');
+                if (!refreshToken) {
+                    console.log('No refresh token available, clearing auth');
+                    await authStorage.clearTokens();
+                    throw new Error('No refresh token');
+                }
 
-                // Manually allow "Cookie" header (requires specific backend acceptance or permissive fetch)
-                // Note: Expo/RN Axios usually allows setting Cookie header manually
+                console.log('Attempting to refresh token...');
+                // For mobile apps, we need the backend to return tokens in response body
+                // Send refresh token in Authorization header
                 const response = await axios.post(`${BASE_URL}/auth/refresh`, {}, {
                     headers: {
-                        Cookie: `habitecho_refresh=${refreshToken}`,
+                        Authorization: `Bearer ${refreshToken}`,
                     },
                 });
 
-                // Extract new tokens from Set-Cookie headers
-                // Axios response.headers is usually an object with lowercase keys
-                const setCookie = response.headers['set-cookie'];
-                let newAccessToken = '';
-                let newRefreshToken = '';
-
-                if (Array.isArray(setCookie)) {
-                    setCookie.forEach(cookie => {
-                        if (cookie.includes('habitecho_access=')) {
-                            newAccessToken = cookie.split('habitecho_access=')[1].split(';')[0];
-                        }
-                        if (cookie.includes('habitecho_refresh=')) {
-                            newRefreshToken = cookie.split('habitecho_refresh=')[1].split(';')[0];
-                        }
-                    });
-                }
-
-                if (newAccessToken && newRefreshToken) {
-                    await authStorage.setTokens(newAccessToken, newRefreshToken);
-                    originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+                // Check if response contains new tokens in body (mobile-friendly approach)
+                const data = response.data?.data;
+                if (data?.accessToken && data?.refreshToken) {
+                    console.log('Token refresh successful');
+                    await authStorage.setTokens(data.accessToken, data.refreshToken);
+                    originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
                     return apiClient(originalRequest);
+                } else {
+                    console.error('No tokens in refresh response');
+                    throw new Error('Invalid refresh response');
                 }
             } catch (refreshError) {
-                // Refresh failed - Logout user
+                console.error('Token refresh failed:', refreshError);
+                // Refresh failed - Clear tokens
                 await authStorage.clearTokens();
-                // Here we might need to trigger a global event or rely on the next auth check
+                // The auth context will handle navigation to login
             }
         }
         return Promise.reject(error);
