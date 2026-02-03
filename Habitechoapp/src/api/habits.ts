@@ -1,28 +1,66 @@
 import { apiClient } from './client';
-import type { ApiResponse, Habit } from '../types';
+import type { ApiResponse, Habit, CreateHabitInput, UpdateHabitInput, PaginatedResponse } from '../types';
+
+// Backend paginated response structure
+interface BackendPaginatedResponse<T> {
+    success: boolean;
+    message: string;
+    data: T[];  // Array directly, not wrapped
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    };
+}
 
 export const habitsApi = {
-    getAll: async (params?: { isActive?: boolean }) => {
-        const response = await apiClient.get<ApiResponse<Habit[]>>('/habits', { params });
-        return response.data;
+    /**
+     * GET /api/habits
+     * Get all habits with optional filters
+     */
+    getAll: async (params?: { isActive?: boolean; page?: number; limit?: number; search?: string }) => {
+        const response = await apiClient.get<BackendPaginatedResponse<Habit>>('/habits', { params });
+        // Backend returns { data: [...], pagination: {...} } directly
+        return {
+            habits: response.data.data,
+            pagination: response.data.pagination
+        };
     },
 
-    create: async (data: any) => {
+    /**
+     * POST /api/habits
+     * Create a new habit
+     */
+    create: async (data: CreateHabitInput) => {
         const response = await apiClient.post<ApiResponse<{ habit: Habit }>>('/habits', data);
-        return response.data;
+        return response.data.data;
     },
 
+    /**
+     * GET /api/habits/:id
+     * Get a single habit by ID
+     */
     getById: async (id: string) => {
         const response = await apiClient.get<ApiResponse<{ habit: Habit }>>(`/habits/${id}`);
-        return response.data;
+        return response.data.data;
     },
 
-    update: async (id: string, data: any) => {
+    /**
+     * PUT /api/habits/:id
+     * Update a habit
+     */
+    update: async (id: string, data: UpdateHabitInput) => {
         const response = await apiClient.put<ApiResponse<{ habit: Habit }>>(`/habits/${id}`, data);
-        return response.data;
+        return response.data.data;
     },
 
+    /**
+     * DELETE /api/habits/:id
+     * Soft delete a habit
+     */
     delete: async (id: string) => {
-        await apiClient.delete(`/habits/${id}`);
+        const response = await apiClient.delete<ApiResponse<null>>(`/habits/${id}`);
+        return response.data;
     }
 };
