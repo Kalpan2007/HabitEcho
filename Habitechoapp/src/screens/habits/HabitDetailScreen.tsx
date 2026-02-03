@@ -67,7 +67,8 @@ export default function HabitDetailScreen() {
         );
     }
 
-    const handleLog today is scheduled
+    const handleLog = async (status: EntryStatus, percentage?: number) => {
+        // Check if today is scheduled
         if (!isScheduledToday) {
             Alert.alert(
                 'Not Scheduled', 
@@ -76,7 +77,6 @@ export default function HabitDetailScreen() {
             return;
         }
 
-        // Check if = (status: EntryStatus, percentage?: number) => {
         // Check if already logged
         if (isLocked) {
             Alert.alert('Already Logged', 'You cannot change the status once logged.');
@@ -134,11 +134,21 @@ export default function HabitDetailScreen() {
             <ScrollView className="flex-1">
                 {/* Header */}
                 <View className="bg-white p-6 border-b border-gray-100">
-                    <Touc!isScheduledToday && (
+                    <TouchableOpacity onPress={() => navigation.goBack()}>
+                        <Text className="text-indigo-600 font-semibold">← Back</Text>
+                    </TouchableOpacity>
+                    <Text className="text-3xl font-bold text-gray-900 mt-4 mb-2">{habit.name}</Text>
+                    {habit.description && <Text className="text-gray-600 mb-4">{habit.description}</Text>}
+                    
+                    <View className="flex-row items-center gap-2 mt-4">
+                        {!isScheduledToday && (
                             <View className="bg-yellow-100 px-3 py-1 rounded-full">
                                 <Text className="text-yellow-700 font-semibold text-xs">⚠️ Not scheduled today</Text>
                             </View>
                         )}
+                        <View className="bg-indigo-50 px-3 py-1 rounded-full">
+                            <Text className="text-indigo-700 font-semibold text-xs uppercase">{habit.frequency}</Text>
+                        </View>
                         {isLocked && (
                             <View className="bg-gray-100 px-3 py-1 rounded-full flex-row items-center gap-1">
                                 <Text className="text-gray-500 font-semibold text-xs">🔒 LOCKED</Text>
@@ -151,19 +161,9 @@ export default function HabitDetailScreen() {
                                 📅 Scheduled: {formatScheduleDays(habit.frequency, habit.scheduleDays)}
                             </Text>
                         </View>
-                    )}lassName="flex-row items-center gap-2 mt-4">
-                        <View className="bg-indigo-50 px-3 py-1 rounded-full">
-                            <Text className="text-indigo-700 font-semibold text-xs uppercase">{habit.frequency}</Text>
-                        </View>
-                        {isLocked && (
-                            <View className="bg-gray-100 px-3 py-1 rounded-full flex-row items-center gap-1">
-                                <Text className="text-gray-500 font-semibold text-xs">🔒 LOCKED</Text>
-                            </View>
-                        )} || !isScheduledToday}
-                            className={`p-6 rounded-2xl border-2 ${
-                                currentStatus === 'DONE'
-                                    ? 'bg-green-50 border-green-500'
-                                    : isLocked || !isScheduledToday
+                    )}
+                </View>
+                
                 <View className="p-6">
                     <Text className="text-xl font-bold text-gray-900 mb-4">How did you do today?</Text>
 
