@@ -9,7 +9,8 @@ import type { AuthenticatedRequest } from '../types/index.js';
  * Authorization header takes priority for better cross-domain support
  */
 function extractToken(req: Request): string | null {
-  // First, check Authorization header (primary method for cross-domain)
+  // Firclear
+  // thorization header (primary method for cross-domain)
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
