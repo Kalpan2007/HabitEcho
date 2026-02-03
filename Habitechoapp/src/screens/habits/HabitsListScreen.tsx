@@ -28,7 +28,8 @@ export default function HabitsListScreen() {
     if (isLoading && !refreshing) return <LoadingScreen />;
     if (error) return <ErrorScreen message="Failed to load habits" onRetry={refetch} />;
 
-    const habits = data?.data?.habits || [];
+    // Extract habits from API response structure: { habits: [], pagination: {} }
+    const habits = data?.habits || [];
 
     return (
         <SafeAreaView className="flex-1 bg-gray-50 p-4 pb-0">
@@ -56,13 +57,18 @@ export default function HabitsListScreen() {
             <FlatList
                 data={habits}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <HabitCard habit={item} />}
-                contentContainerClassName="pb-24"
+                renderItem={({ item }) => (
+                    <HabitCard 
+                        habit={item} 
+                        onPress={() => navigation.navigate('HabitDetail', { habitId: item.id })}
+                    />
+                )}
+                contentContainerStyle={{ paddingBottom: 96 }}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={() => (
                     <View className="items-center justify-center py-20">
                         <Text className="text-gray-500 mb-4">No habits found</Text>
-                        <TouchableOpacity onPress={refetch}>
+                        <TouchableOpacity onPress={() => refetch()}>
                             <Text className="text-indigo-600 font-medium">Refresh</Text>
                         </TouchableOpacity>
                     </View>
