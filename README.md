@@ -334,8 +334,8 @@ MIT License - see [LICENSE](LICENSE) file.
 **Kalpan Kaneriya**
 
 - GitHub: [@Kalpan2007](https://github.com/Kalpan2007)
-- LinkedIn: [kalpan-kaneriya](https://linkedin.com/in/kalpan-kaneriya)
-- Email: kalpankaneriyax@gmail.com
+- LinkedIn: [kalpan-kaneriya](https://linkedin.com/in/3kz)
+- Email: kalpankaneriya@gmail.com
 
 ---
 
