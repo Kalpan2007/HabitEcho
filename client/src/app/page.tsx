@@ -147,7 +147,7 @@ export default function LandingPage() {
       {/* Hero Section - Premium Layout */}
       <section className="pt-36 pb-24 px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
             
             {/* Left Side - Premium Text */}
             <div className="text-center lg:text-left lg:pr-8">
@@ -248,7 +248,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* App Mockup Card - Wider & Shorter */}
-                <div className="bg-white rounded-3xl shadow-2xl border overflow-hidden" style={{ borderColor: '#E5E7EB', boxShadow: '0 40px 80px -20px rgba(99, 102, 241, 0.3), 0 20px 40px -10px rgba(139, 92, 246, 0.2)' }}>
+                <div className="bg-white rounded-3xl shadow-2xl border overflow-hidden max-w-lg" style={{ borderColor: '#E5E7EB', boxShadow: '0 40px 80px -20px rgba(99, 102, 241, 0.3), 0 20px 40px -10px rgba(139, 92, 246, 0.2)' }}>
                   {/* Window Controls */}
                   <div className="px-6 py-4 border-b flex items-center gap-3" style={{ backgroundColor: '#F9FAFB', borderColor: '#F3F4F6' }}>
                     <div className="flex gap-1.5">
